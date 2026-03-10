@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- 背景圆 -->
+  <circle cx="100" cy="100" r="95" fill="#C41A1A" opacity="0.1" stroke="#C41A1A" stroke-width="2"/>
+  <!-- 桥拱 -->
+  <path d="M 30 130 Q 100 50 170 130" fill="none" stroke="#C41A1A" stroke-width="6" stroke-linecap="round"/>
+  <!-- 桥面 -->
+  <line x1="25" y1="130" x2="175" y2="130" stroke="#2C2C2C" stroke-width="4" stroke-linecap="round"/>
+  <!-- 桥柱左 -->
+  <line x1="60" y1="130" x2="60" y2="95" stroke="#2C2C2C" stroke-width="3" stroke-linecap="round"/>
+  <!-- 桥柱中 -->
+  <line x1="100" y1="130" x2="100" y2="72" stroke="#2C2C2C" stroke-width="3" stroke-linecap="round"/>
+  <!-- 桥柱右 -->
+  <line x1="140" y1="130" x2="140" y2="95" stroke="#2C2C2C" stroke-width="3" stroke-linecap="round"/>
+  <!-- 文字"桥" -->
+  <text x="100" y="170" text-anchor="middle" font-family="'Noto Serif SC', 'SimSun', serif" font-size="28" font-weight="bold" fill="#C41A1A">智语桥</text>
+</svg>

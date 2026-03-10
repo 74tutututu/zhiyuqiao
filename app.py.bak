@@ -1,0 +1,194 @@
+import gradio as gr
+from core.ai_agent import generate_response
+
+# ==================== 自定义主题 ====================
+theme = gr.themes.Soft(
+    primary_hue=gr.themes.Color(
+        c50="#FFF0F0", c100="#FFD6D6", c200="#FFB3B3",
+        c300="#FF8A8A", c400="#E84545", c500="#C41A1A",
+        c600="#A81515", c700="#8B1010", c800="#6E0C0C",
+        c900="#520808", c950="#3A0505",
+    ),
+    secondary_hue="stone",
+    neutral_hue="stone",
+    font=("Noto Sans SC", "Microsoft YaHei", "PingFang SC", "sans-serif"),
+    font_mono=("JetBrains Mono", "Consolas", "monospace"),
+).set(
+    body_background_fill="#FFF8F0",
+    body_background_fill_dark="#1A1A1A",
+    block_background_fill="white",
+    block_background_fill_dark="#2C2C2C",
+    block_border_width="0px",
+    block_shadow="0 1px 4px rgba(0,0,0,0.06)",
+    button_primary_background_fill="#C41A1A",
+    button_primary_background_fill_hover="#A81515",
+    button_primary_text_color="white",
+    input_border_color="#E5DDD5",
+    input_background_fill="#FFFDF9",
+    input_background_fill_dark="#333333",
+)
+
+# ==================== 自定义 CSS ====================
+custom_css = """
+/* 顶部品牌栏 */
+.brand-header {
+    background: linear-gradient(135deg, #C41A1A 0%, #8B1010 100%);
+    padding: 24px 32px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.brand-header img {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    background: white;
+    padding: 6px;
+}
+.brand-title {
+    color: white;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 2px;
+}
+.brand-subtitle {
+    color: rgba(255,255,255,0.85);
+    font-size: 14px;
+    margin: 4px 0 0 0;
+}
+
+/* 隐藏 ChatInterface 默认标题 */
+#chat-container .prose {
+    display: none !important;
+}
+
+/* 聊天气泡美化 */
+#chat-container .chatbot {
+    border: 1px solid #F0E6DA !important;
+    border-radius: 12px !important;
+    background: white !important;
+    min-height: 480px;
+}
+#chat-container .chatbot .message {
+    border-radius: 12px !important;
+    font-size: 15px !important;
+    line-height: 1.7 !important;
+}
+#chat-container .chatbot .bot {
+    background: #FFF8F0 !important;
+    border: 1px solid #F0E6DA !important;
+}
+#chat-container .chatbot .user {
+    background: linear-gradient(135deg, #C41A1A, #E84545) !important;
+    color: white !important;
+}
+
+/* 输入框美化 */
+#chat-container textarea {
+    border-radius: 10px !important;
+    border: 1.5px solid #E5DDD5 !important;
+    font-size: 15px !important;
+    transition: border-color 0.2s;
+}
+#chat-container textarea:focus {
+    border-color: #C41A1A !important;
+    box-shadow: 0 0 0 2px rgba(196,26,26,0.1) !important;
+}
+
+/* 提交/清除按钮 */
+#chat-container button.primary {
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+}
+#chat-container button.secondary {
+    border-radius: 10px !important;
+}
+
+/* 示例按钮 */
+#chat-container .examples button {
+    border: 1.5px solid #E5DDD5 !important;
+    border-radius: 20px !important;
+    padding: 8px 18px !important;
+    font-size: 13px !important;
+    color: #6B5E52 !important;
+    background: #FFFDF9 !important;
+    transition: all 0.2s;
+}
+#chat-container .examples button:hover {
+    border-color: #C41A1A !important;
+    color: #C41A1A !important;
+    background: #FFF0F0 !important;
+}
+
+/* 底部声明 */
+.footer-text {
+    text-align: center;
+    color: #A89888;
+    font-size: 12px;
+    margin-top: 8px;
+    padding: 8px;
+}
+"""
+
+# ==================== 品牌 HTML ====================
+BRAND_HTML = """
+<div class="brand-header">
+    <img src="/file=assets/logo.svg" alt="智语桥">
+    <div>
+        <p class="brand-title">智语桥</p>
+        <p class="brand-subtitle">国际中文教育 AI 助手 · International Chinese Education AI Assistant</p>
+    </div>
+</div>
+"""
+
+FOOTER_HTML = """
+<div class="footer-text">
+    ⚠️ 本内容由 AI 生成，涉及具体教学决策或政策解读时，请结合实际教学环境及官方最新文件进行核实。<br>
+    © 2026 智语桥 ZhiYuQiao — Powered by DeepSeek
+</div>
+"""
+
+# ==================== 示例问题 ====================
+EXAMPLES = [
+    ["HSK4 阅读理解有什么备考策略？"],
+    ["如何为零基础留学生设计第一堂中文课？"],
+    ["有哪些适合中文教学的免费数字化工具？"],
+    ["请帮我制定一份 HSK3 级词汇教学方案"],
+]
+
+# ==================== 核心逻辑 ====================
+def chat_fn(message, history):
+    return generate_response(message)
+
+# ==================== 构建界面 ====================
+with gr.Blocks(
+    theme=theme,
+    css=custom_css,
+    title="智语桥 - 国际中文教育 AI 助手",
+) as demo:
+
+    gr.HTML(BRAND_HTML)
+
+    with gr.Column(elem_id="chat-container"):
+        gr.ChatInterface(
+            fn=chat_fn,
+            examples=EXAMPLES,
+            cache_examples=False,
+            submit_btn="发送",
+            retry_btn="🔄 重试",
+            undo_btn="↩ 撤回",
+            clear_btn="🗑️ 清空",
+            textbox=gr.Textbox(
+                placeholder="请输入你的中文教学问题…",
+                container=False,
+                scale=8,
+            ),
+        )
+
+    gr.HTML(FOOTER_HTML)
+
+if __name__ == "__main__":
+    demo.launch(share=True, allowed_paths=["assets"])
