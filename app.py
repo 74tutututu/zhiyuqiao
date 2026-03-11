@@ -1,6 +1,10 @@
 import threading
+from pathlib import Path
 import gradio as gr
 from core.ai_agent import generate_response_stream
+
+# 标记静态资源目录，确保 assets 下的文件可被直接访问
+gr.set_static_paths(paths=[Path.cwd() / "assets"])
 
 # 用于控制流式生成的取消标志
 cancel_event = threading.Event()
@@ -112,10 +116,11 @@ custom_css = """
     transition: background 0.4s;
 }
 .brand-header img {
-    width: 56px; height: 56px;
+    height: 72px; width: auto;
     border-radius: 12px;
     background: white;
     padding: 5px;
+    object-fit: contain;
 }
 .brand-title {
     color: white; font-size: 26px; font-weight: 700;
@@ -135,7 +140,7 @@ custom_css = """
     transition: border-color 0.4s;
 }
 .sidebar-title {
-    color: #2C2C2C; font-size: 14px; font-weight: 600;
+    color: #2C2C2C; font-size: 18px; font-weight: 600;
     margin: 8px 0 4px 4px; padding: 0;
 }
 .sidebar-desc {
@@ -256,11 +261,6 @@ custom_css = """
     white-space: nowrap;
     pointer-events: none;
     z-index: 9999;
-    animation: fadeInTooltip 0.15s ease-out;
-}
-@keyframes fadeInTooltip {
-    from { opacity: 0; transform: translateX(-50%) translateY(4px); }
-    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 /* ---------- Gradio 按钮主色覆盖 ---------- */
@@ -388,7 +388,7 @@ gradio-app {
 /* ---------- 移动端适配 ---------- */
 @media (max-width: 768px) {
     .brand-header { padding: 14px 16px; gap: 12px; }
-    .brand-header img { width: 40px; height: 40px; }
+    .brand-header img { height: 50px; width: auto; }
     .brand-title { font-size: 20px; }
     .brand-subtitle { font-size: 11px; }
     #chatbot { min-height: 350px; }
@@ -399,7 +399,7 @@ gradio-app {
 # ==================== HTML 片段 ====================
 BRAND_HTML = """
 <div class="brand-header">
-    <img src="/file=assets/logo.svg" alt="智语桥">
+    <img src="/gradio_api/file=assets/logo.png" alt="智语桥">
     <div>
         <p class="brand-title">智语桥</p>
         <p class="brand-subtitle">国际中文教育 AI 助手 · International Chinese Education AI Assistant</p>
@@ -624,13 +624,13 @@ with gr.Blocks(title="智语桥 - 国际中文教育 AI 助手") as demo:
     with gr.Row():
         # ===== 左侧边栏 =====
         with gr.Column(scale=1, min_width=200, elem_classes=["sidebar"]):
-            gr.HTML('<p class="sidebar-title">📚 快捷功能</p>')
+            gr.HTML('<p class="sidebar-title">快捷功能</p>')
             gr.HTML('<p class="sidebar-desc">选择场景快速提问</p>')
 
-            nav_teaching = gr.Button("🎓 教学设计咨询", elem_classes=["nav-btn"])
-            nav_hsk = gr.Button("📝 HSK 备考指导", elem_classes=["nav-btn"])
-            nav_tools = gr.Button("🛠️ 数字化工具推荐", elem_classes=["nav-btn"])
-            nav_policy = gr.Button("📋 政策法规解读", elem_classes=["nav-btn"])
+            nav_teaching = gr.Button("教学设计咨询", elem_classes=["nav-btn"])
+            nav_hsk = gr.Button("HSK 备考指导", elem_classes=["nav-btn"])
+            nav_tools = gr.Button("数字化工具推荐", elem_classes=["nav-btn"])
+            nav_policy = gr.Button("政策法规解读", elem_classes=["nav-btn"])
 
             gr.HTML('<p class="sidebar-title" style="margin-top:16px;">🎨 主题色</p>')
             theme_radio = gr.Radio(
