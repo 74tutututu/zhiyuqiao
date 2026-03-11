@@ -105,22 +105,28 @@ custom_css = """
 }
 
 /* ---------- 品牌栏 ---------- */
-.brand-header {
-    background: linear-gradient(135deg, var(--c-primary) 0%, var(--c-primary-dark) 100%);
-    padding: 20px 28px;
-    border-radius: 12px;
-    margin-bottom: 8px;
+.brand-logo {
     display: flex;
     align-items: center;
-    gap: 18px;
-    transition: background 0.4s;
-}
-.brand-header img {
-    height: 72px; width: auto;
-    border-radius: 12px;
+    justify-content: center;
+    padding: 10px 0;
     background: white;
-    padding: 5px;
+    border-radius: 12px;
+}
+.brand-logo img {
+    height: 108px; width: auto;
+    border-radius: 10px;
     object-fit: contain;
+}
+.brand-text {
+    background: linear-gradient(135deg, var(--c-primary) 0%, var(--c-primary-dark) 100%);
+    padding: 20px 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 12px;
+    transition: background 0.4s;
+    margin-bottom: 8px;
 }
 .brand-title {
     color: white; font-size: 26px; font-weight: 700;
@@ -387,8 +393,9 @@ gradio-app {
 
 /* ---------- 移动端适配 ---------- */
 @media (max-width: 768px) {
-    .brand-header { padding: 14px 16px; gap: 12px; }
-    .brand-header img { height: 50px; width: auto; }
+    .brand-logo { padding: 6px 0; }
+    .brand-logo img { height: 50px; }
+    .brand-text { padding: 14px 16px; }
     .brand-title { font-size: 20px; }
     .brand-subtitle { font-size: 11px; }
     #chatbot { min-height: 350px; }
@@ -397,13 +404,16 @@ gradio-app {
 """
 
 # ==================== HTML 片段 ====================
-BRAND_HTML = """
-<div class="brand-header">
+BRAND_LOGO_HTML = """
+<div class="brand-logo">
     <img src="/gradio_api/file=assets/logo.png" alt="智语桥">
-    <div>
-        <p class="brand-title">智语桥</p>
-        <p class="brand-subtitle">国际中文教育 AI 助手 · International Chinese Education AI Assistant</p>
-    </div>
+</div>
+"""
+
+BRAND_TEXT_HTML = """
+<div class="brand-text">
+    <p class="brand-title">智语桥</p>
+    <p class="brand-subtitle">国际中文教育 AI 助手 · International Chinese Education AI Assistant</p>
 </div>
 """
 
@@ -531,6 +541,61 @@ document.addEventListener('DOMContentLoaded', function() {
         if (apply() || ++attempts > 50) clearInterval(timer);
     }, 100);
 })();
+
+/* 对齐品牌栏：logo 与侧边栏对齐，红色框与对话区对齐 */
+(function() {
+    function alignBrand() {
+        var chatbot = document.getElementById('chatbot');
+        var sidebar = document.getElementById('sidebar-col');
+        var brandText = document.querySelector('.brand-text');
+        var brandLogo = document.querySelector('.brand-logo');
+        if (!chatbot || !sidebar || !brandText || !brandLogo) return false;
+
+        /* 红色框：左右对齐对话区 */
+        brandText.style.marginLeft = '0px';
+        brandText.style.marginRight = '0px';
+        var chatRect = chatbot.getBoundingClientRect();
+        var textRect = brandText.getBoundingClientRect();
+        var textLeftOffset = chatRect.left - textRect.left;
+        var textRightOffset = (textRect.right - chatRect.right);
+        if (Math.abs(textLeftOffset) > 1) {
+            brandText.style.marginLeft = textLeftOffset + 'px';
+        }
+        if (Math.abs(textRightOffset) > 1) {
+            brandText.style.marginRight = textRightOffset + 'px';
+        }
+
+        /* logo 栏：左右对齐侧边栏 */
+        brandLogo.style.marginLeft = '0px';
+        brandLogo.style.marginRight = '0px';
+        var sideRect = sidebar.getBoundingClientRect();
+        var logoRect = brandLogo.getBoundingClientRect();
+        var logoLeftOffset = sideRect.left - logoRect.left;
+        var logoRightOffset = (logoRect.right - sideRect.right);
+        if (Math.abs(logoLeftOffset) > 1) {
+            brandLogo.style.marginLeft = logoLeftOffset + 'px';
+        }
+        if (Math.abs(logoRightOffset) > 1) {
+            brandLogo.style.marginRight = logoRightOffset + 'px';
+        }
+
+        /* logo 栏高度：与红色框一致 */
+        var finalTextRect = brandText.getBoundingClientRect();
+        brandLogo.style.height = finalTextRect.height + 'px';
+        brandLogo.style.boxSizing = 'border-box';
+
+        return true;
+    }
+
+    var attempts2 = 0;
+    var timer2 = setInterval(function() {
+        if (alignBrand() || ++attempts2 > 80) clearInterval(timer2);
+    }, 150);
+
+    window.addEventListener('resize', function() {
+        requestAnimationFrame(alignBrand);
+    });
+})();
 </script>
 """
 
@@ -618,12 +683,17 @@ function(choice) {
 # ==================== 构建界面 ====================
 with gr.Blocks(title="智语桥 - 国际中文教育 AI 助手") as demo:
 
-    # ===== 顶部品牌栏 =====
-    gr.HTML(BRAND_HTML)
+    # ===== 顶部品牌栏（独立 Row，scale 与下方一致）=====
+    with gr.Row():
+        with gr.Column(scale=1, min_width=200):
+            gr.HTML(BRAND_LOGO_HTML)
+        with gr.Column(scale=4):
+            gr.HTML(BRAND_TEXT_HTML)
 
+    # ===== 主体布局 =====
     with gr.Row():
         # ===== 左侧边栏 =====
-        with gr.Column(scale=1, min_width=200, elem_classes=["sidebar"]):
+        with gr.Column(scale=1, min_width=200, elem_classes=["sidebar"], elem_id="sidebar-col"):
             gr.HTML('<p class="sidebar-title">快捷功能</p>')
             gr.HTML('<p class="sidebar-desc">选择场景快速提问</p>')
 
