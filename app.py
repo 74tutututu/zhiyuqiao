@@ -5,19 +5,6 @@ from core.ai_agent import generate_response_stream
 # 用于控制流式生成的取消标志
 cancel_event = threading.Event()
 
-# ===== 修复 gradio_client 1.3.0 的 API schema bug =====
-import gradio_client.utils as _gc_utils
-
-_orig_json_schema_to_python_type = _gc_utils._json_schema_to_python_type
-
-def _patched_json_schema_to_python_type(schema, defs=None):
-    if isinstance(schema, bool):
-        return "Any"
-    return _orig_json_schema_to_python_type(schema, defs)
-
-_gc_utils._json_schema_to_python_type = _patched_json_schema_to_python_type
-# ===== End patch =====
-
 # ==================== 自定义主题 ====================
 theme = gr.themes.Soft(
     primary_hue=gr.themes.Color(
@@ -76,6 +63,8 @@ custom_css = """
     --checkbox-border-color-selected: #C41A1A !important;
     --block-label-text-color: #C41A1A !important;
     --block-label-background-fill: #FFF0F0 !important;
+    --block-title-text-color: #C41A1A !important;
+    --block-title-background-fill: #FFF0F0 !important;
 }
 
 /* ---------- 蓝色主题 ---------- */
@@ -107,6 +96,8 @@ custom_css = """
     --checkbox-border-color-selected: #1A6FC4 !important;
     --block-label-text-color: #1A6FC4 !important;
     --block-label-background-fill: #EFF6FF !important;
+    --block-title-text-color: #1A6FC4 !important;
+    --block-title-background-fill: #EFF6FF !important;
 }
 
 /* ---------- 品牌栏 ---------- */
@@ -265,6 +256,17 @@ custom_css = """
 .sidebar input[type="radio"]:checked {
     accent-color: var(--c-primary) !important;
 }
+/* 强制 Radio 圆圈：未选中白底灰框，选中跟随主题色 */
+#theme-radio input[type="radio"] {
+    border-color: #ccc !important;
+    background-color: white !important;
+}
+#theme-radio input[type="radio"]:checked,
+#theme-radio input[type="radio"]:checked:hover,
+#theme-radio input[type="radio"]:checked:focus {
+    border-color: var(--c-primary) !important;
+    background-color: var(--c-primary) !important;
+}
 .sidebar .wrap label:hover {
     border-color: var(--c-primary) !important;
     color: var(--c-primary) !important;
@@ -305,6 +307,29 @@ label.selected span[data-testid] {
 .sidebar label.svelte-1b6s6s {
     color: var(--c-primary) !important;
     transition: color 0.4s;
+}
+
+/* HSK 下拉框标签：按当前主题色显示，避免固定为红色 */
+#hsk-dropdown label,
+#hsk-dropdown .block-info > label,
+#hsk-dropdown .wrap > label {
+    color: var(--c-primary) !important;
+    background: var(--c-primary-bg) !important;
+    transition: color 0.4s, background 0.4s;
+}
+
+.theme-red #hsk-dropdown label,
+.theme-red #hsk-dropdown .block-info > label,
+.theme-red #hsk-dropdown .wrap > label {
+    color: #C41A1A !important;
+    background: #FFF0F0 !important;
+}
+
+.theme-blue #hsk-dropdown label,
+.theme-blue #hsk-dropdown .block-info > label,
+.theme-blue #hsk-dropdown .wrap > label {
+    color: #1A6FC4 !important;
+    background: #EFF6FF !important;
 }
 
 /* ---------- body 背景过渡 ---------- */
@@ -373,33 +398,52 @@ EXAMPLE_QUESTIONS = [
 HSK_LEVELS = ["不限", "HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6"]
 
 # ==================== 核心逻辑 ====================
+def _to_tuples(history):
+    """messages 格式转成 (user, bot) 元组列表，供 ai_agent 使用"""
+    pairs = []
+    i = 0
+    while i < len(history):
+        user_msg = history[i].get("content", "") if history[i].get("role") == "user" else ""
+        bot_msg = ""
+        if i + 1 < len(history) and history[i + 1].get("role") == "assistant":
+            bot_msg = history[i + 1].get("content", "")
+            i += 2
+        else:
+            i += 1
+        pairs.append((user_msg, bot_msg))
+    return pairs
+
+
 def user_submit(message, history, hsk_level):
     """用户发送消息：追加到历史并清空输入框"""
     if not message or not message.strip():
         return "", history
-    history = history + [[message.strip(), None]]
+    history = history + [{"role": "user", "content": message.strip()}]
     return "", history
 
 
 def bot_respond(history, hsk_level):
     """Bot 流式生成回复"""
-    cancel_event.clear()  # 每次开始生成前重置取消标志
-    if not history or history[-1][1] is not None:
+    cancel_event.clear()
+    if not history or history[-1].get("role") != "user":
         yield history
         return
-    user_msg = history[-1][0]
-    # 传入历史（不含当前未回复的最后一轮）
-    prev_history = history[:-1] if len(history) > 1 else None
-    for partial in generate_response_stream(user_msg, history=prev_history, hsk_level=hsk_level, cancel_event=cancel_event):
-        history[-1][1] = partial
-        yield history
+    user_msg = history[-1]["content"]
+    prev_tuples = _to_tuples(history[:-1]) if len(history) > 1 else None
+    for partial in generate_response_stream(user_msg, history=prev_tuples, hsk_level=hsk_level, cancel_event=cancel_event):
+        out = history + [{"role": "assistant", "content": partial}]
+        yield out
+    # 把最终结果固定到 history 中
+    if out:
+        history.clear()
+        history.extend(out)
 
 
 def use_example(example_text, history, hsk_level):
     """点击示例：追加到历史"""
     if not example_text:
         return "", history
-    history = history + [[example_text, None]]
+    history = history + [{"role": "user", "content": example_text}]
     return "", history
 
 
@@ -408,7 +452,8 @@ def export_chat(history):
     if not history:
         return "暂无对话记录可导出。"
     lines = ["# 智语桥对话记录\n"]
-    for i, (user_msg, bot_msg) in enumerate(history, 1):
+    pairs = _to_tuples(history)
+    for i, (user_msg, bot_msg) in enumerate(pairs, 1):
         lines.append(f"## 第 {i} 轮\n")
         lines.append(f"**🧑 用户：**\n{user_msg}\n")
         if bot_msg:
@@ -446,6 +491,8 @@ function(choice) {
     // 强制覆盖 Gradio 内联样式变量
     var vars = {
         red: {
+            '--c-primary': '#C41A1A',
+            '--c-primary-bg': '#FFF0F0',
             '--color-accent': '#C41A1A',
             '--color-accent-soft': '#FFD6D6',
             '--checkbox-label-background-fill': 'transparent',
@@ -460,10 +507,14 @@ function(choice) {
             '--input-border-color': '#E5DDD5',
             '--input-background-fill': '#FFFDF9',
             '--block-label-background-fill': '#FFF0F0',
+            '--block-title-text-color': '#C41A1A',
+            '--block-title-background-fill': '#FFF0F0',
             '--checkbox-background-color-selected': '#C41A1A',
             '--checkbox-border-color-selected': '#C41A1A',
         },
         blue: {
+            '--c-primary': '#1A6FC4',
+            '--c-primary-bg': '#EFF6FF',
             '--color-accent': '#1A6FC4',
             '--color-accent-soft': '#D6E4F0',
             '--checkbox-label-background-fill': 'transparent',
@@ -478,6 +529,8 @@ function(choice) {
             '--input-border-color': '#D0DDEA',
             '--input-background-fill': '#FAFCFF',
             '--block-label-background-fill': '#EFF6FF',
+            '--block-title-text-color': '#1A6FC4',
+            '--block-title-background-fill': '#EFF6FF',
             '--checkbox-background-color-selected': '#1A6FC4',
             '--checkbox-border-color-selected': '#1A6FC4',
         }
@@ -487,6 +540,24 @@ function(choice) {
         var v = vars[t];
         for (var k in v) { ga.style.setProperty(k, v[k]); }
     }
+
+    // 直接切换“HSK 等级”标签颜色，避免被 Gradio 默认样式覆盖
+    var hskLabel = document.querySelector('#hsk-dropdown label');
+    if (hskLabel) {
+        hskLabel.style.color = isBlue ? '#1A6FC4' : '#C41A1A';
+        hskLabel.style.background = isBlue ? '#EFF6FF' : '#FFF0F0';
+    }    // 强制切换 Radio 按钮样式：未选中恢复白底灰框，选中跟随主题色
+    var themeColor = isBlue ? '#1A6FC4' : '#C41A1A';
+    var radios = document.querySelectorAll('#theme-radio input[type="radio"]');
+    radios.forEach(function(r) {
+        if (r.checked) {
+            r.style.setProperty('border-color', themeColor, 'important');
+            r.style.setProperty('background-color', themeColor, 'important');
+        } else {
+            r.style.setProperty('border-color', '#ccc', 'important');
+            r.style.setProperty('background-color', 'white', 'important');
+        }
+    });
     return choice;
 }
 """
@@ -515,6 +586,7 @@ with gr.Blocks(title="智语桥 - 国际中文教育 AI 助手") as demo:
                 label="",
                 interactive=True,
                 container=False,
+                elem_id="theme-radio",
             )
 
             gr.HTML('<p class="sidebar-title" style="margin-top:12px;">⚙️ 设置</p>')
@@ -522,6 +594,7 @@ with gr.Blocks(title="智语桥 - 国际中文教育 AI 助手") as demo:
                 choices=HSK_LEVELS,
                 value="不限",
                 label="HSK 等级",
+                elem_id="hsk-dropdown",
                 interactive=True,
             )
 
@@ -628,17 +701,17 @@ with gr.Blocks(title="智语桥 - 国际中文教育 AI 助手") as demo:
     export_btn.click(
         export_chat, [chatbot], [export_output]
     ).then(
-        lambda: gr.update(visible=True), None, [export_output]
+        lambda: gr.Textbox(visible=True), None, [export_output]
     )
 
 
 if __name__ == "__main__":
-  demo.launch(
+    demo.launch(
         server_name="0.0.0.0",   # 允许公网访问
         server_port=7860,        # 固定端口
         share=False,             # 阿里云部署不需要 share
-        theme=theme,             # 从 Blocks 移到这里
-        css=custom_css,          # 从 Blocks 移到这里
-        head=THEME_HEAD,         # 从 Blocks 移到这里
+        theme=theme,
+        css=custom_css,
+        head=THEME_HEAD,
         allowed_paths=["assets"] # 保持资源授权
- )
+    )
