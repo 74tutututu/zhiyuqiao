@@ -236,6 +236,33 @@ custom_css = """
     background: var(--c-primary-bg) !important;
 }
 
+/* ---------- 操作按钮悬停提示 ---------- */
+#stop-btn button,
+#clear-btn button {
+    position: relative;
+}
+#stop-btn button:hover::after,
+#clear-btn button:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.78);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 9999;
+    animation: fadeInTooltip 0.15s ease-out;
+}
+@keyframes fadeInTooltip {
+    from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* ---------- Gradio 按钮主色覆盖 ---------- */
 .primary {
     background: var(--c-primary) !important;
@@ -478,6 +505,32 @@ THEME_HEAD = """
 document.addEventListener('DOMContentLoaded', function() {
     document.documentElement.classList.add('theme-red');
 });
+
+/* 等 Gradio Svelte 完成渲染后为按钮写入 title */
+(function() {
+    var tooltipMap = {
+        'stop-btn':  '终止 AI 输出回答',
+        'clear-btn': '清空全部对话内容'
+    };
+    function apply() {
+        var done = true;
+        for (var id in tooltipMap) {
+            var wrap = document.getElementById(id);
+            if (!wrap) { done = false; continue; }
+            var btn = wrap.querySelector('button') || wrap;
+            if (btn.getAttribute('title') !== tooltipMap[id]) {
+                btn.setAttribute('title', tooltipMap[id]);
+                btn.setAttribute('aria-label', tooltipMap[id]);
+            }
+        }
+        return done;
+    }
+    /* 轮询直到两个按钮都写入成功，最多 5 秒 */
+    var attempts = 0;
+    var timer = setInterval(function() {
+        if (apply() || ++attempts > 50) clearInterval(timer);
+    }, 100);
+})();
 </script>
 """
 
@@ -634,8 +687,8 @@ with gr.Blocks(title="智语桥 - 国际中文教育 AI 助手") as demo:
                     max_lines=4,
                 )
                 send_btn = gr.Button("发送", variant="primary", elem_classes=["send-btn"], scale=1)
-                stop_btn = gr.Button("⏹️", elem_classes=["action-btn"], scale=0)
-                clear_btn = gr.Button("🗑️", elem_classes=["action-btn"], scale=0)
+                stop_btn = gr.Button("⏹️", elem_id="stop-btn", elem_classes=["action-btn"], scale=0)
+                clear_btn = gr.Button("🗑️", elem_id="clear-btn", elem_classes=["action-btn"], scale=0)
 
     # ===== 底部 =====
     gr.HTML(FOOTER_HTML)
