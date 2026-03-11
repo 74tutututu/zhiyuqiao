@@ -28,8 +28,8 @@ theme = gr.themes.Soft(
     ),
     secondary_hue="stone",
     neutral_hue="stone",
-    font=("Noto Sans SC", "Microsoft YaHei", "PingFang SC", "sans-serif"),
-    font_mono=("JetBrains Mono", "Consolas", "monospace"),
+    font=[gr.themes.GoogleFont("Noto Sans SC"), "Microsoft YaHei", "PingFang SC", "sans-serif"],
+font_mono=[gr.themes.GoogleFont("JetBrains Mono"), "Consolas", "monospace"],
 ).set(
     body_background_fill="#FFF8F0",
     body_background_fill_dark="#1A1A1A",
@@ -492,12 +492,7 @@ function(choice) {
 """
 
 # ==================== 构建界面 ====================
-with gr.Blocks(
-    theme=theme,
-    css=custom_css,
-    title="智语桥 - 国际中文教育 AI 助手",
-    head=THEME_HEAD,
-) as demo:
+with gr.Blocks(title="智语桥 - 国际中文教育 AI 助手") as demo:
 
     # ===== 顶部品牌栏 =====
     gr.HTML(BRAND_HTML)
@@ -545,7 +540,6 @@ with gr.Blocks(
             chatbot = gr.Chatbot(
                 elem_id="chatbot",
                 show_label=False,
-                bubble_full_width=False,
                 height=480,
             )
 
@@ -639,4 +633,12 @@ with gr.Blocks(
 
 
 if __name__ == "__main__":
-    demo.launch(share=True, allowed_paths=["assets"])
+  demo.launch(
+        server_name="0.0.0.0",   # 允许公网访问
+        server_port=7860,        # 固定端口
+        share=False,             # 阿里云部署不需要 share
+        theme=theme,             # 从 Blocks 移到这里
+        css=custom_css,          # 从 Blocks 移到这里
+        head=THEME_HEAD,         # 从 Blocks 移到这里
+        allowed_paths=["assets"] # 保持资源授权
+ )
