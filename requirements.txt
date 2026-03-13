@@ -69,3 +69,4 @@ urllib3==2.6.3
 uvicorn==0.41.0
 websockets==16.0
 zipp==3.23.0
+scikit-learn>=1.4.0

@@ -1,0 +1,14 @@
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "配对 (Matching Pairs)", "content": "LearningApps 核心模板：用户需要将左右两列相关的元素（图片、文本、音频或视频）进行拖拽连线配对。底层逻辑：实体间的 1:1 映射关系。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "小组作业 (Group assignment)", "content": "LearningApps 核心模板：屏幕上设定好多个分类容器，用户需要将散落的项目拖入对应的分类框中。底层逻辑：实体到集合的多对一归属关系。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "时间线 (Time line)", "content": "LearningApps 核心模板：要求用户将一系列事件、日期或数值按正确的顺序排列在一根数轴上。底层逻辑：一维线性排序。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "简单订单 (Simple order)", "content": "LearningApps 核心模板：将打乱的文本段落、故事句子或图片，按照正确的逻辑先后顺序重新上下排列。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "自由文本输入 (Free text input)", "content": "LearningApps 核心模板：系统提出问题或展示多媒体素材，用户需要通过键盘手动输入准确的文本答案。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "图像上的匹配对 (Matching Pairs on Images)", "content": "LearningApps 核心模板：在背景图片（如地图、解剖图）上预设大头针标记点，用户需将文本标签准确拖拽到图片上的对应标记处。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "多项选择题测验 (Multiple-Choice Quiz)", "content": "LearningApps 核心模板：标准的单选或多选题，包含计分系统，答对后才能进入下一题。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "完形填空文本 (Cloze text)", "content": "LearningApps 核心模板：传统的填空题练习。系统会在文本中挖空，用户可以通过下拉菜单选择正确词汇，或者直接手动输入拼写。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "音频/视频（含通知） (Audio/Video with notices)", "content": "LearningApps 核心模板：交互式视频功能。在播放 YouTube 或本地音视频时，可以在特定的时间戳自动暂停，并弹出文本说明、选择题或配对任务，完成后继续播放。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "百万富翁游戏 (The Millionaire Game)", "content": "LearningApps 游戏化模板：模仿电视综艺节目的答题闯关游戏。题目难度逐级递增，适合做阶段性复习测验。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "纵横字谜 (Crossword)", "content": "LearningApps 游戏化模板：经典的填字游戏。系统根据教师提供的词汇和提示线索，自动生成纵横交错的字母网格供学生填写。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "单词网格 (Word grid)", "content": "LearningApps 游戏化模板：寻字游戏。在一个充满随机字母的矩阵中，学生需要通过划线找出隐藏在其中的特定词汇（支持横向、纵向和斜向）。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "猜词游戏 (Guess the word)", "content": "LearningApps 游戏化模板：经典的“刽子手 (Hangman)”游戏变体。根据提示每次猜一个字母，猜错会失去生命值，直到拼出完整的单词。"}
+{"tool_name": "LearningApps", "category": "Core_Templates", "title": "赛马 (Horse race)", "content": "LearningApps 多人模板：支持学生之间进行同步或异步的答题比赛。答对题目，代表学生的虚拟马匹就会向前奔跑。"}

@@ -54,7 +54,7 @@ def _build_messages(system_prompt, user_input, history=None):
 
 def generate_response(user_input, history=None, hsk_level="不限"):
     """非流式生成回复（兼容旧调用）"""
-    local_context = get_relevant_info(user_input)
+    local_context = get_relevant_info(user_input, hsk_level)
     system_prompt = _build_system_prompt(local_context, hsk_level)
     messages = _build_messages(system_prompt, user_input, history)
 
@@ -71,7 +71,10 @@ def generate_response(user_input, history=None, hsk_level="不限"):
 
 def generate_response_stream(user_input, history=None, hsk_level="不限", cancel_event=None):
     """流式生成回复 - 逐步 yield 累积文本，支持通过 cancel_event 中止"""
-    local_context = get_relevant_info(user_input)
+    if isinstance(user_input, list):
+        user_input = " ".join(str(item) for item in user_input)
+    user_input = str(user_input)
+    local_context = get_relevant_info(user_input, hsk_level)
     system_prompt = _build_system_prompt(local_context, hsk_level)
     messages = _build_messages(system_prompt, user_input, history)
 
