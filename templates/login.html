@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main class="auth-shell">
+    <section class="auth-card">
+        <div class="brand-block">
+            <div class="brand-mark">智语桥</div>
+            <p class="brand-subtitle">国际中文教育 AI 助手</p>
+        </div>
+        <div class="auth-header">
+            <h1>登录</h1>
+            <p>使用账号或账号名登录，继续你的教学工作台。</p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" class="stack-form">
+            <label class="field">
+                <span>账号 / 账号名</span>
+                <input type="text" name="identifier" value="{{ identifier }}" placeholder="请输入账号或账号名" required>
+            </label>
+            <label class="field">
+                <span>密码</span>
+                <input type="password" name="password" placeholder="请输入密码" required>
+            </label>
+            <button class="primary-btn" type="submit">登录</button>
+        </form>
+
+        <p class="auth-footer">
+            还没有账号？
+            <a href="/register">去注册</a>
+        </p>
+    </section>
+</main>
+{% endblock %}

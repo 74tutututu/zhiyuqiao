@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main class="auth-shell">
+    <section class="auth-card auth-card-wide">
+        <div class="brand-block">
+            <div class="brand-mark">智语桥</div>
+            <p class="brand-subtitle">国际中文教育 AI 助手</p>
+        </div>
+        <div class="auth-header">
+            <h1>{% if first_user %}首次注册{% else %}注册账号{% endif %}</h1>
+            <p>先完成一个简单账号注册，后续就可以用账号或账号名登录。</p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" class="stack-form">
+            <div class="form-grid">
+                <label class="field">
+                    <span>账号</span>
+                    <input type="text" name="username" value="{{ form_data.username or '' }}" placeholder="建议使用英文字母或数字" required>
+                </label>
+                <label class="field">
+                    <span>账号名</span>
+                    <input type="text" name="display_name" value="{{ form_data.display_name or '' }}" placeholder="例如：葡语教学老师" required>
+                </label>
+            </div>
+
+            <label class="field">
+                <span>密码</span>
+                <input type="password" name="password" placeholder="请输入密码" required>
+            </label>
+
+            <fieldset class="field-group">
+                <legend>教学语种（可多选）</legend>
+                <div class="option-grid">
+                    {% set selected_languages = form_data.teaching_languages or ['中文'] %}
+                    {% for language in language_options %}
+                    <label class="checkbox-chip">
+                        <input type="checkbox" name="teaching_languages" value="{{ language }}" {% if language in selected_languages %}checked{% endif %}>
+                        <span>{{ language }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <div class="form-grid">
+                <label class="field">
+                    <span>教师水平</span>
+                    <select name="teacher_level" required>
+                        {% set selected_level = form_data.teacher_level or 'experienced_teacher' %}
+                        {% for label, value in teacher_level_choices %}
+                        <option value="{{ value }}" {% if value == selected_level %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="field">
+                    <span>主题色</span>
+                    <select name="theme_name" required>
+                        {% set selected_theme = form_data.theme_name or default_theme %}
+                        {% for label, value in theme_choices %}
+                        <option value="{{ value }}" {% if value == selected_theme %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+
+            <button class="primary-btn" type="submit">完成注册</button>
+        </form>
+
+        <p class="auth-footer">
+            已有账号？
+            <a href="/login">去登录</a>
+        </p>
+    </section>
+</main>
+{% endblock %}

@@ -649,7 +649,7 @@ def get_relevant_info(query_text, hsk_level="不限"):
     替代旧的 CSV 检索。根据查询路由到合适的知识域，
     返回格式化的上下文字符串。
     """
-    # 防御：Gradio 组件可能传入 list 而非 str
+    # 防御：前端组件可能传入 list 而非 str
     if isinstance(query_text, list):
         query_text = " ".join(str(item) for item in query_text)
     query_text = str(query_text)
@@ -662,6 +662,54 @@ def get_relevant_info(query_text, hsk_level="不限"):
 
     domains = _route_query(query_text)
     logger.info("查询路由到域: %s", domains)
+
+    results = []
+    for domain in domains:
+        try:
+            if domain == "hsk":
+                result = _search_hsk(_kb, query_text, hsk_level)
+            elif domain == "strategies":
+                result = _search_strategies(_kb, query_text)
+            elif domain == "mucgec":
+                result = _search_mucgec(_kb, query_text)
+            elif domain == "softwares":
+                result = _search_softwares(_kb, query_text)
+            else:
+                result = _search_tfidf(_kb, domain, query_text)
+
+            if result:
+                results.append(result)
+        except Exception as e:
+            logger.warning("域 %s 搜索失败: %s", domain, e)
+
+    if results:
+        combined = "\n\n".join(results)
+        if len(combined) > MAX_CONTEXT_CHARS:
+            combined = combined[:MAX_CONTEXT_CHARS] + "\n...（更多内容已截断）"
+        return combined
+
+    return "未在知识库中找到直接相关内容，请根据专业知识回答。"
+
+
+def get_relevant_info_by_domains(query_text, domains, hsk_level="不限"):
+    """
+    根据指定域返回知识库上下文。
+
+    domains: 可迭代的域名称列表，如 ["hsk", "softwares"]。
+    """
+    if isinstance(query_text, list):
+        query_text = " ".join(str(item) for item in query_text)
+    query_text = str(query_text)
+    domains = [str(d).strip() for d in (domains or []) if str(d).strip()]
+
+    if not domains:
+        return get_relevant_info(query_text, hsk_level=hsk_level)
+
+    try:
+        _kb.initialize()
+    except Exception as e:
+        logger.error("知识库加载失败: %s", e)
+        return "知识库加载失败，将使用通用知识回答。"
 
     results = []
     for domain in domains:

@@ -1,0 +1,463 @@
+:root {
+    --bg: #fff8f0;
+    --bg-panel: #ffffff;
+    --bg-soft: #fff2eb;
+    --text: #2f2a26;
+    --muted: #7d6f64;
+    --line: #eadfd6;
+    --shadow: 0 18px 40px rgba(60, 32, 12, 0.08);
+    --primary: #c41a1a;
+    --primary-strong: #9c1111;
+    --primary-soft: rgba(196, 26, 26, 0.12);
+}
+
+body[data-theme="academy_blue"] {
+    --bg: #f4f8ff;
+    --bg-panel: #ffffff;
+    --bg-soft: #edf4ff;
+    --text: #24384c;
+    --muted: #6b7e93;
+    --line: #d8e4f3;
+    --shadow: 0 18px 40px rgba(24, 76, 138, 0.08);
+    --primary: #1a6fc4;
+    --primary-strong: #0f5192;
+    --primary-soft: rgba(26, 111, 196, 0.12);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: linear-gradient(180deg, var(--bg) 0%, #ffffff 100%);
+    color: var(--text);
+}
+
+a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.auth-shell {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+}
+
+.auth-card,
+.settings-card,
+.profile-card,
+.brand-panel,
+.chat-shell,
+.composer-card,
+.skill-panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+}
+
+.auth-card {
+    width: min(560px, 100%);
+    border-radius: 24px;
+    padding: 32px;
+}
+
+.auth-card-wide {
+    width: min(760px, 100%);
+}
+
+.brand-block,
+.brand-panel {
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+    color: white;
+}
+
+.brand-block {
+    padding: 20px 24px;
+    margin-bottom: 24px;
+}
+
+.brand-panel {
+    padding: 20px;
+}
+
+.brand-mark {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.brand-subtitle {
+    margin: 8px 0 0;
+    opacity: 0.9;
+    font-size: 14px;
+}
+
+.auth-header h1,
+.page-header h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+}
+
+.auth-header p,
+.page-header p,
+.muted {
+    margin: 0;
+    color: var(--muted);
+}
+
+.auth-footer {
+    margin: 20px 0 0;
+    text-align: center;
+    color: var(--muted);
+}
+
+.stack-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.field,
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.field span,
+.field-group legend {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.field input,
+.field select,
+.field textarea {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: white;
+    color: var(--text);
+    padding: 12px 14px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field textarea {
+    resize: vertical;
+    min-height: 128px;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.field input:disabled {
+    background: #f6f6f6;
+    color: #888;
+}
+
+.field-group {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.option-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.checkbox-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.checkbox-chip input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.checkbox-chip span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    padding: 10px 14px;
+    background: var(--bg-soft);
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.checkbox-chip input:checked + span {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.primary-btn,
+.ghost-btn,
+.ghost-link {
+    border-radius: 14px;
+    padding: 12px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.primary-btn {
+    border: 0;
+    color: white;
+    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+}
+
+.primary-btn:hover {
+    transform: translateY(-1px);
+}
+
+.ghost-btn,
+.ghost-link {
+    border: 1px solid var(--line);
+    background: white;
+    color: var(--text);
+}
+
+.ghost-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+.action-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.alert {
+    border-radius: 16px;
+    padding: 14px 16px;
+    font-size: 14px;
+}
+
+.alert-error {
+    background: #fff0f0;
+    color: #a62c2c;
+    border: 1px solid #f3c7c7;
+}
+
+.alert-success {
+    background: #effaf2;
+    color: #1d6b35;
+    border: 1px solid #cce9d4;
+}
+
+.dashboard-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+    padding: 24px;
+}
+
+.dashboard-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.dashboard-main {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.profile-card,
+.skill-panel,
+.settings-card,
+.chat-shell {
+    border-radius: 24px;
+    padding: 20px;
+}
+
+.profile-label,
+.eyebrow {
+    margin: 0 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.profile-card h2 {
+    margin: 0 0 4px;
+}
+
+.info-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.info-chip {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: var(--bg-soft);
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.section-title-row,
+.page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.skill-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.skill-item {
+    text-align: left;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    background: white;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.skill-item:hover,
+.skill-item.active {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+}
+
+.skill-name {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.skill-desc {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.chat-shell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.chat-messages {
+    flex: 1;
+    min-height: 420px;
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.message {
+    margin-bottom: 16px;
+    display: flex;
+}
+
+.message.user {
+    justify-content: flex-end;
+}
+
+.message-bubble {
+    max-width: min(840px, 90%);
+    border-radius: 18px;
+    padding: 14px 16px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.message.user .message-bubble {
+    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+    color: white;
+}
+
+.message.assistant .message-bubble {
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+}
+
+.assistant-rendered h3 {
+    margin: 0 0 10px;
+    font-size: 18px;
+}
+
+.assistant-rendered p {
+    margin: 8px 0;
+}
+
+.assistant-rendered ul {
+    margin: 8px 0 8px 18px;
+    padding: 0;
+}
+
+.composer-card {
+    margin-top: 18px;
+    border-radius: 20px;
+    padding: 18px;
+    background: #fffdfb;
+}
+
+.side-nav a {
+    display: inline-flex;
+    padding: 10px 0;
+    font-weight: 600;
+}
+
+@media (max-width: 980px) {
+    .dashboard-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}

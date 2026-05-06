@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main class="dashboard-shell">
+    <aside class="dashboard-sidebar">
+        <div class="brand-panel">
+            <div class="brand-mark">智语桥</div>
+            <p class="brand-subtitle">国际中文教育 AI 助手</p>
+        </div>
+
+        <section class="profile-card">
+            <p class="profile-label">当前账号</p>
+            <h2>{{ user.display_name }}</h2>
+            <p class="muted">@{{ user.username }}</p>
+            <div class="info-chip-row">
+                <span class="info-chip">{{ user.teacher_role_label }}</span>
+                <span class="info-chip">{{ user.teaching_languages_display }}</span>
+            </div>
+        </section>
+
+        <section class="skill-panel">
+            <div class="section-title-row">
+                <h3>技能</h3>
+                <a href="/settings">设置</a>
+            </div>
+            <div id="skill-list" class="skill-list">
+                {% for skill in skills %}
+                <button
+                    type="button"
+                    class="skill-item {% if loop.first %}active{% endif %}"
+                    data-skill-key="{{ skill.key }}"
+                    data-skill-label="{{ skill.label }}"
+                    data-skill-description="{{ skill.description }}"
+                >
+                    <span class="skill-name">{{ skill.label }}</span>
+                    <span class="skill-desc">{{ skill.description }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </section>
+    </aside>
+
+    <section class="dashboard-main">
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">已登录工作台</p>
+                <h1 id="current-skill-title">{{ skills[0].label }}</h1>
+                <p id="current-skill-description">{{ skills[0].description }}</p>
+            </div>
+            <form method="post" action="/logout">
+                <button class="ghost-btn" type="submit">退出登录</button>
+            </form>
+        </header>
+
+        <section class="chat-shell">
+            <div id="chat-messages" class="chat-messages"></div>
+
+            <div class="composer-card">
+                <label class="field">
+                    <span>输入你的问题或待处理文本</span>
+                    <textarea id="composer-input" rows="5" placeholder="例如：请帮我设计一节面向葡语背景零基础学习者的中文导入课。"></textarea>
+                </label>
+                <div class="action-row">
+                    <button id="send-btn" class="primary-btn" type="button">发送</button>
+                    <button id="clear-btn" class="ghost-btn" type="button">清空对话</button>
+                </div>
+            </div>
+        </section>
+    </section>
+</main>
+
+<script>
+    window.__ZHIYUQIAO__ = {
+        skills: {{ skills | tojson }},
+        user: {{ user | tojson }}
+    };
+</script>
+<script src="{{ url_for('static', path='/assistant.js') }}"></script>
+{% endblock %}

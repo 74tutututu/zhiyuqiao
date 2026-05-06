@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main class="dashboard-shell">
+    <aside class="dashboard-sidebar">
+        <div class="brand-panel">
+            <div class="brand-mark">智语桥</div>
+            <p class="brand-subtitle">账号设置</p>
+        </div>
+        <div class="profile-card">
+            <p class="profile-label">当前账号</p>
+            <h2>{{ user.display_name }}</h2>
+            <p class="muted">@{{ user.username }}</p>
+            <div class="info-chip-row">
+                <span class="info-chip">{{ user.teacher_role_label }}</span>
+                <span class="info-chip">{{ user.theme_label }}</span>
+            </div>
+        </div>
+        <nav class="side-nav">
+            <a href="/assistant">返回助手</a>
+        </nav>
+    </aside>
+
+    <section class="dashboard-main">
+        <header class="page-header">
+            <div>
+                <h1>账号设置</h1>
+                <p>教学语种、教师水平和主题色都会直接影响回答风格与界面表现。</p>
+            </div>
+            <form method="post" action="/logout">
+                <button class="ghost-btn" type="submit">退出登录</button>
+            </form>
+        </header>
+
+        {% if success %}
+        <div class="alert alert-success">{{ success }}</div>
+        {% endif %}
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" class="settings-card stack-form">
+            <div class="form-grid">
+                <label class="field">
+                    <span>账号</span>
+                    <input type="text" value="{{ user.username }}" disabled>
+                </label>
+                <label class="field">
+                    <span>账号名</span>
+                    <input type="text" name="display_name" value="{{ user.display_name }}" required>
+                </label>
+            </div>
+
+            <fieldset class="field-group">
+                <legend>教学语种（可多选）</legend>
+                <div class="option-grid">
+                    {% for language in language_options %}
+                    <label class="checkbox-chip">
+                        <input type="checkbox" name="teaching_languages" value="{{ language }}" {% if language in user.teaching_languages %}checked{% endif %}>
+                        <span>{{ language }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <div class="form-grid">
+                <label class="field">
+                    <span>教师水平</span>
+                    <select name="teacher_level" required>
+                        {% for label, value in teacher_level_choices %}
+                        <option value="{{ value }}" {% if value == user.teacher_level %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="field">
+                    <span>主题色</span>
+                    <select name="theme_name" required>
+                        {% for label, value in theme_choices %}
+                        <option value="{{ value }}" {% if value == user.theme_name %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+
+            <label class="field">
+                <span>新密码（选填）</span>
+                <input type="password" name="password" placeholder="不修改可留空">
+            </label>
+
+            <div class="action-row">
+                <button class="primary-btn" type="submit">保存设置</button>
+                <a class="ghost-link" href="/assistant">返回助手</a>
+            </div>
+        </form>
+    </section>
+</main>
+{% endblock %}

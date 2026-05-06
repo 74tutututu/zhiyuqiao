@@ -1,0 +1,16 @@
+[Unit]
+Description=ZhiYuQiao Web App
+After=network.target
+
+[Service]
+Type=simple
+User=__APP_USER__
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=__APP_DIR__/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__APP_DIR__/.venv/bin/python __APP_DIR__/app.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
