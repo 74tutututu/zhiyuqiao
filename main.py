@@ -3,13 +3,14 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from core.account_profiles import (
     ACCOUNT_ROLE_LABELS,
@@ -24,6 +25,7 @@ from core.account_profiles import (
     authenticate_teacher,
     count_users,
     create_user_session,
+    delete_user_sessions_for_user,
     delete_user_session,
     get_teacher_profile_by_session,
     initialize_profile_store,
@@ -31,6 +33,15 @@ from core.account_profiles import (
     update_account_profile,
 )
 from core.assistant_service import list_assistant_skills, run_assistant_turn
+from core.content_catalog import get_knowledge_stats
+from core.web_security import (
+    CSRF_COOKIE_NAME,
+    SlidingWindowLimiter,
+    client_key,
+    ensure_csrf_token,
+    secure_cookies_enabled,
+    validate_csrf_token,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 TEMPLATES_DIR = PROJECT_ROOT / "templates"
@@ -47,11 +58,47 @@ app = FastAPI(title="智语桥 ZhiYuQiao", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+LOGIN_LIMITER = SlidingWindowLimiter(limit=6, window_seconds=60)
+MESSAGE_LIMITER = SlidingWindowLimiter(limit=30, window_seconds=60)
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    token = ensure_csrf_token(request)
+    response = await call_next(request)
+    if not request.cookies.get(CSRF_COOKIE_NAME):
+        response.set_cookie(
+            CSRF_COOKIE_NAME,
+            token,
+            httponly=False,
+            samesite="lax",
+            secure=secure_cookies_enabled(),
+            max_age=SESSION_TTL_DAYS * 24 * 60 * 60,
+            path="/",
+        )
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), geolocation=(), microphone=(self)")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    )
+    if secure_cookies_enabled():
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=12000)
+
 
 class AssistantMessageRequest(BaseModel):
     skill_key: str = Field(default="teacher_advisor", description="当前选择的 skill")
-    text: str = Field(..., description="用户输入")
-    history: list[dict[str, Any]] | None = Field(default=None, description="当前会话历史")
+    text: str = Field(..., min_length=1, max_length=6000, description="用户输入")
+    history: list[ChatMessage] = Field(default_factory=list, max_length=20, description="当前会话历史")
 
 
 def _theme_choices() -> list[tuple[str, str]]:
@@ -94,6 +141,8 @@ def _page_context(request: Request, **kwargs: Any) -> dict[str, Any]:
         "learning_goal_choices": _learning_goal_choices(),
         "theme_choices": _theme_choices(),
         "default_theme": DEFAULT_THEME,
+        "csrf_token": ensure_csrf_token(request),
+        "knowledge_stats": get_knowledge_stats(),
         **kwargs,
     }
     return context
@@ -106,7 +155,7 @@ def _redirect_with_session(url: str, session_id: str) -> RedirectResponse:
         session_id,
         httponly=True,
         samesite="lax",
-        secure=os.getenv("ZHIYUQIAO_SECURE_COOKIES", "0") == "1",
+        secure=secure_cookies_enabled(),
         max_age=SESSION_TTL_DAYS * 24 * 60 * 60,
         path="/",
     )
@@ -159,6 +208,10 @@ async def register_submit(request: Request):
         return RedirectResponse(url=_role_home(current), status_code=303)
 
     form = await request.form()
+    if not validate_csrf_token(request, form.get("csrf_token")):
+        raise HTTPException(status_code=403, detail="页面已过期，请刷新后重试。")
+    if str(form.get("accept_terms", "")) != "yes":
+        raise HTTPException(status_code=400, detail="请先阅读并同意隐私说明。")
     form_data = {
         "username": str(form.get("username", "")).strip(),
         "display_name": str(form.get("display_name", "")).strip(),
@@ -222,8 +275,18 @@ async def login_page(request: Request):
 @app.post("/login", response_class=HTMLResponse)
 async def login_submit(request: Request):
     form = await request.form()
+    if not validate_csrf_token(request, form.get("csrf_token")):
+        raise HTTPException(status_code=403, detail="页面已过期，请刷新后重试。")
     identifier = str(form.get("identifier", "")).strip()
     password = str(form.get("password", ""))
+
+    allowed, retry_after = LOGIN_LIMITER.allow(f"{client_key(request)}:{identifier.casefold()}")
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"登录尝试过于频繁，请在 {retry_after} 秒后重试。",
+            headers={"Retry-After": str(retry_after)},
+        )
 
     profile = authenticate_teacher(identifier, password)
     if profile is None:
@@ -244,6 +307,9 @@ async def login_submit(request: Request):
 
 @app.post("/logout")
 async def logout(request: Request):
+    form = await request.form()
+    if not validate_csrf_token(request, form.get("csrf_token")):
+        raise HTTPException(status_code=403, detail="页面已过期，请刷新后重试。")
     session_id = request.cookies.get(SESSION_COOKIE_NAME)
     delete_user_session(session_id)
     response = RedirectResponse(url="/login", status_code=303)
@@ -276,6 +342,14 @@ async def teacher_workspace(request: Request):
             user=user.to_dict(),
             skills=list_assistant_skills("teacher"),
         ),
+    )
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request):
+    return templates.TemplateResponse(
+        "privacy.html",
+        _page_context(request, page_title="隐私与 AI 使用说明", user=None),
     )
 
 
@@ -323,6 +397,8 @@ async def settings_submit(request: Request):
         return redirect
 
     form = await request.form()
+    if not validate_csrf_token(request, form.get("csrf_token")):
+        raise HTTPException(status_code=403, detail="页面已过期，请刷新后重试。")
     display_name = str(form.get("display_name", "")).strip()
     teacher_level = str(form.get("teacher_level", "")).strip()
     account_role = str(form.get("account_role", user.account_role)).strip()
@@ -369,6 +445,9 @@ async def settings_submit(request: Request):
             status_code=400,
         )
 
+    if password:
+        delete_user_sessions_for_user(user.user_id, exclude_session_id=request.cookies.get(SESSION_COOKIE_NAME))
+
     return templates.TemplateResponse(
         "settings.html",
         _page_context(
@@ -402,13 +481,23 @@ async def api_message(request: Request, payload: AssistantMessageRequest):
     user = _current_user(request)
     if user is None:
         raise HTTPException(status_code=401, detail="未登录")
+    if not validate_csrf_token(request, request.headers.get("x-csrf-token")):
+        raise HTTPException(status_code=403, detail="页面已过期，请刷新后重试。")
+    allowed, retry_after = MESSAGE_LIMITER.allow(f"{client_key(request)}:{user.user_id}")
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"请求过于频繁，请在 {retry_after} 秒后重试。",
+            headers={"Retry-After": str(retry_after)},
+        )
 
     try:
-        reply = run_assistant_turn(
+        reply = await run_in_threadpool(
+            run_assistant_turn,
             skill_key=payload.skill_key,
             text=payload.text,
             profile=user,
-            history=payload.history,
+            history=[item.model_dump() for item in payload.history],
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

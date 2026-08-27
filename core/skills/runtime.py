@@ -228,7 +228,7 @@ def _error_payload(spec: SkillSpec, exc: Exception) -> dict[str, Any]:
         "status": "error",
         "intent": "error",
         "message": f"{spec.name} 暂时不可用，请稍后重试。",
-        "error_detail": str(exc),
+        "error_detail": "",
     }
     if spec.key == "bridge_translate":
         payload.update(

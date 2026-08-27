@@ -162,7 +162,7 @@
         try {
             const response = await fetch("/api/message", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "X-CSRF-Token": boot.csrfToken || "" },
                 body: JSON.stringify({ skill_key: state.selectedSkill, text, history: state.history }),
             });
             const payload = await response.json();

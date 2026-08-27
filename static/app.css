@@ -55,6 +55,7 @@ button { color: inherit; }
     padding: 10px 16px; border-radius: 8px; background: var(--ink); color: white;
 }
 .skip-link:focus { top: 12px; }
+.sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 :focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 34%, transparent); outline-offset: 3px; }
 
 .wordmark {
@@ -129,6 +130,9 @@ button { color: inherit; }
 .checkbox-chip input { position: absolute; opacity: 0; }
 .checkbox-chip span { display: inline-flex; min-height: 36px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper-strong); color: var(--ink-soft); font-size: 12px; transition: .18s; }
 .checkbox-chip input:checked + span { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 800; }
+.consent-row { display: flex; align-items: flex-start; gap: 10px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.consent-row input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
+.consent-row a { color: var(--accent); font-weight: 800; }
 .primary-btn, .secondary-btn, .quiet-btn, .light-btn, .glass-btn, .send-btn, .icon-link {
     min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 16px;
     border-radius: 999px; border: 1px solid transparent; cursor: pointer; font-weight: 800; transition: transform .18s, background .18s, border-color .18s;
@@ -252,6 +256,15 @@ body[data-theme="academy_blue"] .message.assistant .message-bubble { background:
 .role-pill { display: inline-flex; padding: 6px 10px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 900; }.role-pill-large { padding: 8px 12px; }
 .profile-summary { margin: 28px 0 0; }.profile-summary div { padding: 14px 0; border-top: 1px solid rgba(255,255,255,.14); }.profile-summary dt { color: rgba(255,255,255,.48); font-size: 10px; }.profile-summary dd { margin: 5px 0 0; font-size: 13px; }
 .settings-panel { padding: clamp(26px, 4vw, 46px); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--paper); box-shadow: var(--shadow-sm); }.settings-panel .section-heading { margin-bottom: 30px; }
+
+/* Policy */
+.policy-page { width: min(820px, calc(100% - 40px)); margin: 64px auto 100px; }
+.policy-page h1 { margin: 0 0 18px; font-family: var(--serif); font-size: clamp(38px, 6vw, 62px); }
+.policy-lead { margin: 0 0 42px; color: var(--muted); font-size: 17px; line-height: 1.9; }
+.policy-page section { padding: 26px 0; border-top: 1px solid var(--line); }
+.policy-page section h2 { margin: 0 0 10px; font-family: var(--serif); font-size: 22px; }
+.policy-page section p { margin: 0; color: var(--ink-soft); line-height: 1.9; }
+.policy-note { margin-top: 28px; padding: 18px; border-left: 4px solid var(--accent); background: var(--accent-soft); color: var(--ink-soft); line-height: 1.8; }
 
 @media (max-width: 1180px) {
     .culture-strip { grid-template-columns: repeat(3, minmax(170px, 1fr)); }

@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import os
 import secrets
+import re
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
@@ -405,6 +406,12 @@ def register_account(
 
     if not resolved_username or not resolved_display_name or not resolved_password:
         raise ValueError("账号、账号名和密码不能为空。")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{3,32}", resolved_username):
+        raise ValueError("登录账号须为3—32位英文字母、数字、点、下划线或连字符。")
+    if not 1 <= len(resolved_display_name) <= 32:
+        raise ValueError("显示名称须为1—32个字符。")
+    if len(resolved_password) < 8:
+        raise ValueError("密码至少需要8个字符。")
 
     normalized_languages = list(_normalize_languages(teaching_languages))
     resolved_account_role = _validate_account_role(account_role)
@@ -505,6 +512,10 @@ def update_account_profile(
     resolved_display_name = str(display_name or "").strip()
     if not resolved_display_name:
         raise ValueError("账号名不能为空。")
+    if len(resolved_display_name) > 32:
+        raise ValueError("显示名称不能超过32个字符。")
+    if password and len(password) < 8:
+        raise ValueError("新密码至少需要8个字符。")
 
     normalized_languages = list(_normalize_languages(teaching_languages))
     resolved_account_role = _validate_account_role(account_role)
@@ -596,7 +607,7 @@ def get_teacher_profile_by_session(session_id: str | None, *, touch: bool = True
             session.delete(record)
             return None
 
-        if touch:
+        if touch and (now - record.last_seen_at.replace(tzinfo=record.last_seen_at.tzinfo or timezone.utc)) >= timedelta(minutes=5):
             record.last_seen_at = now
             record.expires_at = now + timedelta(days=SESSION_TTL_DAYS)
             session.add(record)
@@ -614,4 +625,17 @@ def delete_user_session(session_id: str | None) -> None:
     with get_db_session() as session:
         record = session.scalar(select(SessionRecord).where(SessionRecord.session_id == resolved_session_id))
         if record is not None:
+            session.delete(record)
+
+
+def delete_user_sessions_for_user(user_id: str, *, exclude_session_id: str | None = None) -> None:
+    initialize_profile_store()
+    resolved_user_id = str(user_id or "").strip()
+    if not resolved_user_id:
+        return
+    with get_db_session() as session:
+        records = session.scalars(select(SessionRecord).where(SessionRecord.user_id == resolved_user_id)).all()
+        for record in records:
+            if exclude_session_id and record.session_id == exclude_session_id:
+                continue
             session.delete(record)

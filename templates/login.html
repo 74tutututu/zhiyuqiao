@@ -21,6 +21,7 @@
             </div>
             {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
             <form method="post" class="stack-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <label class="field"><span>账号或显示名称</span><input type="text" name="identifier" value="{{ identifier }}" placeholder="请输入账号" autocomplete="username" required></label>
                 <label class="field"><span>密码</span><input type="password" name="password" placeholder="请输入密码" autocomplete="current-password" required></label>
                 <button class="primary-btn primary-btn-large" type="submit">登录 <span>→</span></button>

@@ -232,6 +232,10 @@ def _target_level(profile: AccountProfile) -> str:
         return "HSK1"
     if profile.student_level == "hsk2":
         return "HSK2"
+    if profile.student_level == "hsk3":
+        return "HSK3"
+    if profile.student_level == "hsk4":
+        return "HSK4"
     if profile.student_level in {"hsk5", "hsk6", "advanced"}:
         return "Advanced"
     return "General"

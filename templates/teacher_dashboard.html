@@ -7,7 +7,7 @@
     <nav class="top-actions" aria-label="教师账户导航">
         <span class="top-profile"><b>{{ user.display_name }}</b><small>{{ user.teacher_role_label }}</small></span>
         <a class="icon-link" href="/settings" aria-label="账号设置">设置</a>
-        <form method="post" action="/logout"><button class="quiet-btn" type="submit">退出</button></form>
+        <form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="quiet-btn" type="submit">退出</button></form>
     </nav>
 </header>
 
@@ -36,7 +36,7 @@
                 </div>
             </div>
             <div class="hero-metrics">
-                <div><strong>25,145</strong><span>知识条目</span></div><div><strong>6</strong><span>海派主题</span></div><div><strong>8</strong><span>教师工具</span></div>
+                <div><strong>{{ knowledge_stats.total_display }}</strong><span>可检索资料</span></div><div><strong>6</strong><span>海派主题</span></div><div><strong>8</strong><span>教师工具</span></div>
             </div>
         </section>
 
@@ -63,13 +63,13 @@
             <div id="starter-prompts" class="starter-prompts" aria-label="推荐问题"></div>
             <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
             <div class="composer-card">
-                <textarea id="composer-input" rows="4" maxlength="6000" placeholder="描述学习者水平、课堂时长、文化主题和你希望得到的产出……"></textarea>
+                <label class="sr-only" for="composer-input">描述教学需求</label><textarea id="composer-input" rows="4" maxlength="6000" placeholder="描述学习者水平、课堂时长、文化主题和你希望得到的产出……"></textarea>
                 <div class="composer-footer"><span id="character-count">0 / 6000</span><div class="action-row"><button id="clear-btn" class="quiet-btn" type="button">清空</button><button id="send-btn" class="send-btn" type="button">发送 <span>↗</span></button></div></div>
             </div>
         </section>
     </section>
 </main>
 
-<script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "teacher" };</script>
+<script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "teacher", csrfToken: {{ csrf_token | tojson }} };</script>
 <script src="{{ url_for('static', path='/assistant.js') }}"></script>
 {% endblock %}

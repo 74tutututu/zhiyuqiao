@@ -5,7 +5,7 @@
     <a class="wordmark" href="{{ user.workspace_url }}">智语桥 <span>ZHIYUQIAO</span></a>
     <nav class="top-actions" aria-label="账户导航">
         <a class="text-link" href="{{ user.workspace_url }}">返回{{ '学习空间' if user.is_student else '教师工作台' }}</a>
-        <form method="post" action="/logout"><button class="quiet-btn" type="submit">退出</button></form>
+        <form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="quiet-btn" type="submit">退出</button></form>
     </nav>
 </header>
 
@@ -27,6 +27,7 @@
         {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
 
         <form method="post" class="stack-form" data-profile-form>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-grid">
                 <label class="field"><span>登录账号</span><input type="text" value="{{ user.username }}" disabled></label>
                 <label class="field"><span>显示名称</span><input type="text" name="display_name" value="{{ user.display_name }}" autocomplete="name" required></label>
@@ -55,7 +56,7 @@
 
             <div class="form-grid">
                 <label class="field"><span>界面主题</span><select name="theme_name">{% for label, value in theme_choices %}<option value="{{ value }}" {% if value == user.theme_name %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-                <label class="field"><span>新密码（选填）</span><input type="password" name="password" placeholder="不修改可留空" autocomplete="new-password"></label>
+                <label class="field"><span>新密码（选填）</span><input type="password" name="password" placeholder="至少8个字符；不修改可留空" minlength="8" autocomplete="new-password"></label>
             </div>
             <div class="form-actions"><button class="primary-btn" type="submit">保存设置</button><a class="secondary-btn" href="{{ user.workspace_url }}">取消</a></div>
         </form>

@@ -12,7 +12,7 @@
         <div class="story-proof">
             <span><strong>6</strong> 个文化主题</span>
             <span><strong>8</strong> 类教师工具</span>
-            <span><strong>25,145</strong> 条知识条目</span>
+            <span><strong>{{ knowledge_stats.total_display }}</strong> 条可检索资料</span>
         </div>
         <div class="skyline" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
     </section>
@@ -28,6 +28,7 @@
             {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
 
             <form method="post" class="stack-form" data-profile-form>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 {% set selected_role = form_data.account_role or 'student' %}
                 <fieldset class="field-group">
                     <legend>选择身份</legend>
@@ -47,7 +48,7 @@
                     <label class="field"><span>登录账号</span><input type="text" name="username" value="{{ form_data.username or '' }}" placeholder="英文字母或数字" autocomplete="username" required></label>
                     <label class="field"><span>显示名称</span><input type="text" name="display_name" value="{{ form_data.display_name or '' }}" placeholder="大家如何称呼你" autocomplete="name" required></label>
                 </div>
-                <label class="field"><span>密码</span><input type="password" name="password" placeholder="设置一个安全密码" autocomplete="new-password" minlength="6" required></label>
+                <label class="field"><span>密码</span><input type="password" name="password" placeholder="至少8个字符" autocomplete="new-password" minlength="8" required></label>
 
                 <section class="role-panel" data-role-panel="student">
                     <div class="form-grid">
@@ -69,6 +70,8 @@
                 </fieldset>
 
                 <label class="field compact-field"><span>界面主题</span><select name="theme_name">{% set selected_theme = form_data.theme_name or default_theme %}{% for label, value in theme_choices %}<option value="{{ value }}" {% if value == selected_theme %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+
+                <label class="consent-row"><input type="checkbox" name="accept_terms" value="yes" required><span>我已阅读<a href="/privacy" target="_blank">隐私与 AI 使用说明</a>，并同意不要在对话中提交敏感个人信息。</span></label>
 
                 <button class="primary-btn primary-btn-large" type="submit">创建账号并进入我的空间 <span>→</span></button>
             </form>

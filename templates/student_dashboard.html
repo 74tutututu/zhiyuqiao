@@ -7,7 +7,7 @@
     <nav class="top-actions" aria-label="学生账户导航">
         <span class="top-profile"><b>{{ user.display_name }}</b><small>{{ user.student_level_label }}</small></span>
         <a class="icon-link" href="/settings" aria-label="账号设置">设置</a>
-        <form method="post" action="/logout"><button class="quiet-btn" type="submit">退出</button></form>
+        <form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="quiet-btn" type="submit">退出</button></form>
     </nav>
 </header>
 
@@ -36,7 +36,7 @@
                 <p>观察建筑、倾听城市语言，用已经掌握的中文完成一次真实交流。</p>
                 <div class="hero-actions"><button class="light-btn" type="button" data-skill-target="culture_explorer" data-prompt="我想从外滩开始认识上海。请按我的中文水平教我关键词，并给我一个可以完成的小任务。">开始文化探索</button><button class="glass-btn" type="button" data-skill-target="speaking_partner" data-prompt="和我练习向朋友介绍外滩与陆家嘴，你先问我一个简单问题。">练习开口表达</button></div>
             </div>
-            <div class="level-card"><span>我的中文</span><strong>{{ user.student_level_label }}</strong><small>{{ user.learning_goal_label }}</small><div class="progress-track"><i style="width: 58%"></i></div><em>每次完成一个真实任务，就是一次进步。</em></div>
+            <div class="level-card"><span>我的中文</span><strong>{{ user.student_level_label }}</strong><small>{{ user.learning_goal_label }}</small><div class="progress-track progress-empty" aria-label="尚未记录学习进度"><i style="width: 0"></i></div><em>完成第一个文化任务后，这里会开始记录进度。</em></div>
         </section>
 
         <section class="content-section">
@@ -58,11 +58,11 @@
             <header class="workbench-header"><div><p class="kicker">LEARNING COMPANION</p><h2 id="current-skill-title">{{ skills[0].label }}</h2><p id="current-skill-description">{{ skills[0].description }}</p></div><span class="live-badge"><i></i> 按 {{ user.student_level_label }} 讲解</span></header>
             <div id="starter-prompts" class="starter-prompts" aria-label="推荐问题"></div>
             <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
-            <div class="composer-card"><textarea id="composer-input" rows="4" maxlength="6000" placeholder="可以用中文或你设置的讲解语言提问。例如：‘侬好’是什么意思？"></textarea><div class="composer-footer"><span id="character-count">0 / 6000</span><div class="action-row"><button id="clear-btn" class="quiet-btn" type="button">清空</button><button id="send-btn" class="send-btn" type="button">发送 <span>↗</span></button></div></div></div>
+            <div class="composer-card"><label class="sr-only" for="composer-input">向学习伙伴提问</label><textarea id="composer-input" rows="4" maxlength="6000" placeholder="可以用中文或你设置的讲解语言提问。例如：‘侬好’是什么意思？"></textarea><div class="composer-footer"><span id="character-count">0 / 6000</span><div class="action-row"><button id="clear-btn" class="quiet-btn" type="button">清空</button><button id="send-btn" class="send-btn" type="button">发送 <span>↗</span></button></div></div></div>
         </section>
     </section>
 </main>
 
-<script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "student" };</script>
+<script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "student", csrfToken: {{ csrf_token | tojson }} };</script>
 <script src="{{ url_for('static', path='/assistant.js') }}"></script>
 {% endblock %}
