@@ -47,7 +47,7 @@
                 </label>
                 <label class="field">
                     <span>账号名</span>
-                    <input type="text" name="display_name" value="{{ user.display_name }}" required>
+                    <input type="text" name="display_name" value="{{ user.display_name }}" autocomplete="name" required>
                 </label>
             </div>
 
@@ -84,7 +84,7 @@
 
             <label class="field">
                 <span>新密码（选填）</span>
-                <input type="password" name="password" placeholder="不修改可留空">
+                <input type="password" name="password" placeholder="不修改可留空" autocomplete="new-password">
             </label>
 
             <div class="action-row">

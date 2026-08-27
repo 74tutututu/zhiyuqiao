@@ -3,6 +3,8 @@ Knowledge Base Retriever for ZhiYuQiao.
 
 Loads structured knowledge from database/ at startup, routes queries
 to the correct domain(s), and returns relevant context for the LLM.
+
+Now supports dual-mode: Vector Database (preferred) with TF-IDF fallback.
 """
 
 import json
@@ -18,6 +20,17 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 logger = logging.getLogger(__name__)
 
+# Try to import vector retriever
+get_vector_retriever = None
+VectorDB = None
+try:
+    from .vector_retriever import get_vector_retriever, VectorDB
+    VECTOR_DB_AVAILABLE = True
+    logger.info("Vector database support enabled")
+except ImportError:
+    VECTOR_DB_AVAILABLE = False
+    logger.warning("Vector database not available, using TF-IDF fallback")
+
 DATABASE_DIR = Path(__file__).resolve().parent.parent / "database"
 
 # ── 常量 ──────────────────────────────────────────────────────────────
@@ -26,6 +39,12 @@ TFIDF_TOP_K = 5
 TFIDF_MIN_SCORE = 0.005
 HSK_SAMPLE_SIZE = 20
 MUCGEC_EXAMPLE_CAP = 200
+
+QUERY_STOPWORDS = {
+    "怎么", "如何", "怎样", "什么", "哪个", "哪种", "哪些", "可以", "能否",
+    "请问", "请", "帮我", "帮忙", "一下", "一个", "一些", "使用", "用", "做", "查",
+    "看看", "了解", "介绍", "告诉", "关于", "是否", "有没有", "还有", "以及",
+}
 
 # ── 域路由关键词配置 ─────────────────────────────────────────────────
 # primary: 高置信度（3分）  secondary: 低置信度（1分）  languages: 语种名（5分）
@@ -170,6 +189,29 @@ class KnowledgeBase:
                         continue
         return docs
 
+    @staticmethod
+    def _detect_text_encoding(filepath):
+        """为历史语料选择更合适的编码，优先得到可读中文。"""
+        candidates = ["utf-8", "gb18030", "gbk"]
+        best_encoding = "utf-8"
+        best_score = -1
+
+        for encoding in candidates:
+            try:
+                with open(filepath, "r", encoding=encoding, errors="ignore") as f:
+                    sample = "".join([f.readline() for _ in range(30)])
+                if not sample:
+                    continue
+                chinese_count = len(re.findall(r"[\u4e00-\u9fff]", sample))
+                score = chinese_count / max(len(sample), 1)
+                if score > best_score:
+                    best_score = score
+                    best_encoding = encoding
+            except Exception:
+                continue
+
+        return best_encoding
+
     # ── 文本域加载 ────────────────────────────────────────────────
     def _load_text_domains(self):
         # MUCGEC 纠错规范
@@ -180,7 +222,9 @@ class KnowledgeBase:
         # MUCGEC 纠错示例
         self.mucgec_examples = []
         dev_path = DATABASE_DIR / "MUCGEC" / "MuCGEC" / "MuCGEC_dev.txt"
-        with open(dev_path, "r", encoding="utf-8") as f:
+        dev_encoding = self._detect_text_encoding(dev_path)
+        logger.info("MuCGEC_dev.txt encoding detected: %s", dev_encoding)
+        with open(dev_path, "r", encoding=dev_encoding, errors="ignore") as f:
             for i, line in enumerate(f):
                 if i >= MUCGEC_EXAMPLE_CAP:
                     break
@@ -249,6 +293,9 @@ def _route_query(query):
     scores = {}
     query_lower = query.lower()
 
+    if _looks_like_hsk_char_query(query):
+        scores["hsk"] = scores.get("hsk", 0) + 4
+
     for domain, kw_config in DOMAIN_KEYWORDS.items():
         score = 0
         for kw in kw_config.get("primary", []):
@@ -270,7 +317,7 @@ def _route_query(query):
     if not scores:
         return ["teacher", "references"]
 
-    sorted_domains = sorted(scores, key=scores.get, reverse=True)
+    sorted_domains = sorted(scores.keys(), key=lambda domain: scores[domain], reverse=True)
     result = [sorted_domains[0]]
     if len(sorted_domains) > 1:
         if scores[sorted_domains[1]] >= scores[sorted_domains[0]] * 0.5:
@@ -289,6 +336,35 @@ def _parse_hsk_level(hsk_level_str):
 
 def _extract_chinese_tokens(text):
     return re.findall(r"[\u4e00-\u9fff]+", text)
+
+
+def _extract_focus_terms(query):
+    """提取查询中最可能的目标词，优先保留引号内或显式动词后的词。"""
+    focus_terms = []
+
+    for term in re.findall(r"[“\"'‘](.+?)[”\"'’]", query):
+        term = term.strip()
+        if term:
+            focus_terms.append(term)
+
+    if not focus_terms:
+        match = re.search(r"(?:以|用|拿|请用|请拿)([\u4e00-\u9fff]{1,4})(?:造词|组词|造句)", query)
+        if match:
+            focus_terms.append(match.group(1))
+
+    return focus_terms
+
+
+def _looks_like_hsk_char_query(query):
+    """判断是否是汉字造词/组词/造句一类的 HSK 汉字查询。"""
+    if not query:
+        return False
+
+    if any(kw in query for kw in ["造词", "组词", "造句", "例词", "词组"]):
+        if re.search(r"[\u4e00-\u9fff]", query):
+            return True
+
+    return bool(_extract_focus_terms(query))
 
 
 def _search_hsk_vocab(kb, query, level_str):
@@ -351,11 +427,14 @@ def _search_hsk_chars(kb, query, level_num):
     else:
         filtered = df
 
-    chinese_tokens = _extract_chinese_tokens(query)
-    if chinese_tokens:
+    focus_terms = _extract_focus_terms(query)
+    search_terms = focus_terms if focus_terms else _extract_chinese_tokens(query)
+
+    if search_terms:
         mask = pd.Series(False, index=filtered.index)
-        for token in chinese_tokens:
+        for token in search_terms:
             mask = mask | filtered["Hanzi"].astype(str).str.contains(token, na=False)
+            mask = mask | filtered["Traditional"].astype(str).str.contains(token, na=False)
         matches = filtered[mask]
         if not matches.empty:
             filtered = matches
@@ -418,7 +497,7 @@ def _search_hsk(kb, query, hsk_level):
     ])
     is_char = any(kw in query for kw in [
         "汉字", "笔画", "偏旁", "部首", "认读", "书写",
-        "字表",
+        "字表", "造词", "组词", "造句", "例词", "词组",
     ])
     is_exam_strategy = any(kw in query for kw in [
         "备考", "策略", "技巧", "方法", "怎么准备",
@@ -486,7 +565,40 @@ def _search_hsk(kb, query, hsk_level):
     return "\n".join(p for p in parts if p)
 
 
-# ── TF-IDF 搜索 ─────────────────────────────────────────────────────
+# ── 向量搜索（优先使用）─────────────────────────────────────────────────────
+def _search_vector(domain, query, top_k=TFIDF_TOP_K):
+    """使用向量数据库进行语义搜索（若可用）。"""
+    if not VECTOR_DB_AVAILABLE or get_vector_retriever is None:
+        logger.debug(f"Vector DB not available, skipping for domain: {domain}")
+        return None
+
+    if not query or not isinstance(query, str):
+        logger.warning(f"Invalid query for vector search: {query}")
+        return None
+
+    try:
+        retriever = get_vector_retriever()
+        logger.debug(f"Searching vector DB for domain={domain}, query_len={len(query)}")
+
+        results = retriever.search_semantic(query, domain, top_k=top_k)
+
+        if not results:
+            logger.debug(f"No vector results for domain={domain}")
+            return None
+
+        logger.info(f"Vector search found {len(results)} results for domain={domain}")
+        formatted = retriever.format_for_context(results, max_chars=1000, domain=domain)
+        return formatted if formatted else None
+
+    except ImportError:
+        logger.warning(f"Vector DB import failed, falling back to TF-IDF")
+        return None
+    except Exception as e:
+        logger.warning(f"Vector search failed for {domain}: {e}", exc_info=True)
+        return None
+
+
+# ── TF-IDF 搜索（降级方案）─────────────────────────────────────────────────────
 def _search_tfidf(kb, domain, query, top_k=TFIDF_TOP_K):
     if domain not in kb.tfidf_indices:
         return ""
@@ -506,6 +618,156 @@ def _search_tfidf(kb, domain, query, top_k=TFIDF_TOP_K):
         content = doc.get("content", "")
         if len(content) > 800:
             content = content[:800] + "..."
+        header = f"【{title}】" if title else ""
+        if source:
+            header += f"（来源: {source}）"
+        results.append(f"{header}\n{content}")
+
+    return "\n---\n".join(results)
+
+
+def _normalize_query_terms(query):
+    """把查询拆成更稳定的命中词，供精确兜底检索使用。"""
+    terms = []
+
+    for term in _extract_focus_terms(query):
+        term = term.strip()
+        if term:
+            terms.append(term)
+
+    for term in _extract_chinese_tokens(query):
+        if term:
+            terms.append(term)
+
+    for part in re.split(r"[\s,，。！？!?;；:：()（）\[\]{}<>《》\"“”'‘’]+", query):
+        part = part.strip().lower()
+        if not part:
+            continue
+        if re.search(r"[a-z0-9]", part):
+            terms.append(part)
+
+    # 再按中英文脚本边界拆分，避免像「Moodle怎么用」这类混写词被当成一个整体
+    for chunk in re.findall(r"[A-Za-z0-9]+|[\u4e00-\u9fff]+", query):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        if re.search(r"[a-z0-9]", chunk, re.IGNORECASE):
+            terms.append(chunk.lower())
+        else:
+            terms.append(chunk)
+
+    unique_terms = []
+    seen_terms = set()
+    for term in terms:
+        normalized = term.strip()
+        if not normalized:
+            continue
+        if normalized in QUERY_STOPWORDS:
+            continue
+        if len(normalized) < 2 and not re.search(r"[\u4e00-\u9fff]", normalized):
+            continue
+        if normalized not in seen_terms:
+            seen_terms.add(normalized)
+            unique_terms.append(normalized)
+
+    return unique_terms
+
+
+def _search_exact_records(records, query, field_names=("title", "content"), max_results=3):
+    """在字典记录中做直接字符串命中，作为向量/TF-IDF 的最后兜底。"""
+    terms = _normalize_query_terms(query)
+    if not terms:
+        return ""
+
+    matches = []
+    seen_signatures = set()
+
+    for record in records:
+        haystack_parts = []
+        for field_name in field_names:
+            value = record.get(field_name)
+            if value:
+                haystack_parts.append(str(value))
+        haystack = " ".join(haystack_parts)
+        haystack_lower = haystack.lower()
+
+        hit_count = 0
+        for term in terms:
+            if term.lower() in haystack_lower:
+                hit_count += 1
+
+        if hit_count == 0:
+            continue
+
+        title = record.get("title", record.get("chapter", record.get("tool_name", "")))
+        source = record.get("source", record.get("tool_name", ""))
+        content = record.get("content", record.get("text", record.get("description", "")))
+        if len(str(content)) > 800:
+            content = str(content)[:800] + "..."
+
+        signature = (title, source, content[:120])
+        if signature in seen_signatures:
+            continue
+        seen_signatures.add(signature)
+
+        header = f"【{title}】" if title else ""
+        if source:
+            header += f"（来源: {source}）"
+        matches.append(f"{header}\n{content}")
+
+        if len(matches) >= max_results:
+            break
+
+    return "\n---\n".join(matches)
+
+
+def _search_ranked_records(records, query, field_weights=None, max_results=3):
+    """按字段加权进行精确兜底，优先返回更相关的库内记录。"""
+    if field_weights is None:
+        field_weights = {"title": 3, "tool_name": 4, "content": 1, "chapter": 2, "description": 1}
+
+    terms = _normalize_query_terms(query)
+    if not terms:
+        return ""
+
+    scored = []
+    seen_signatures = set()
+
+    for record in records:
+        score = 0
+        field_hits = 0
+        for field_name, weight in field_weights.items():
+            value = record.get(field_name)
+            if not value:
+                continue
+            haystack = str(value).lower()
+            for term in terms:
+                if term.lower() in haystack:
+                    score += weight
+                    field_hits += 1
+
+        if score <= 0:
+            continue
+
+        title = record.get("title", record.get("chapter", record.get("tool_name", "")))
+        source = record.get("source", record.get("tool_name", ""))
+        content = record.get("content", record.get("text", record.get("description", "")))
+        if len(str(content)) > 800:
+            content = str(content)[:800] + "..."
+
+        signature = (title, source, str(content)[:120])
+        if signature in seen_signatures:
+            continue
+        seen_signatures.add(signature)
+
+        scored.append((score, field_hits, title, source, content))
+
+    if not scored:
+        return ""
+
+    scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    results = []
+    for _, __, title, source, content in scored[:max_results]:
         header = f"【{title}】" if title else ""
         if source:
             header += f"（来源: {source}）"
@@ -534,6 +796,13 @@ def _resolve_query_languages(query):
 
 
 def _search_strategies(kb, query):
+    """优先向量搜索，降级 TF-IDF。"""
+    # 优先使用向量搜索
+    vector_result = _search_vector("strategies", query, top_k=3)
+    if vector_result:
+        return vector_result
+
+    # 降级到原有逻辑
     matched_langs = _resolve_query_languages(query)
 
     matches = []
@@ -567,9 +836,37 @@ def _search_strategies(kb, query):
 
 # ── MUCGEC 搜索 ──────────────────────────────────────────────────────
 def _search_mucgec(kb, query):
+    """优先向量搜索纠错规范，然后补充示例。"""
     parts = []
 
-    guideline_result = _search_tfidf(kb, "mucgec", query)
+    # 优先直命中 MuCGEC_dev 示例，避免“库里有但检索不到”的情况
+    example_records = []
+    for ex in kb.mucgec_examples:
+        example_records.append({
+            "title": f"MuCGEC示例 {ex.get('id', '')}".strip(),
+            "content": ex.get("original", "") + " " + " ".join(ex.get("corrections", [])),
+            "source": "MuCGEC_dev.txt",
+            "original": ex.get("original", ""),
+        })
+
+    example_result = _search_ranked_records(
+        example_records,
+        query,
+        field_weights={"title": 2, "content": 5, "original": 6},
+        max_results=3,
+    )
+    if example_result:
+        parts.append("【纠错示例】\n" + example_result)
+        # 句子纠错类问题优先直接返回示例，避免首轮等待向量模型加载
+        if any(kw in query for kw in ["病句", "修改", "纠错", "改错", "改句", "怎么改", "是否正确"]):
+            return "\n\n".join(parts)
+
+    # 优先向量搜索规范
+    guideline_result = _search_vector("mucgec", query)
+    if not guideline_result:
+        # 降级 TF-IDF
+        guideline_result = _search_tfidf(kb, "mucgec", query)
+
     if guideline_result:
         parts.append("【纠错规范】\n" + guideline_result)
 
@@ -605,18 +902,33 @@ def _search_mucgec(kb, query):
 
 # ── 软件搜索 ─────────────────────────────────────────────────────────
 def _search_softwares(kb, query):
-    """软件域搜索：先 TF-IDF，若无明确工具名则补充各工具概览。"""
+    """软件域搜索：优先向量搜索，降级 TF-IDF，若无明确工具名则补充各工具概览。"""
     query_lower = query.lower()
     # 检查是否查询特定工具
     tool_names = ["moodle", "bigbluebutton", "bbb", "jitsi", "learningapps"]
     has_specific_tool = any(t in query_lower for t in tool_names)
 
+    direct_result = _search_ranked_records(
+        kb.software_docs,
+        query,
+        field_weights={"tool_name": 6, "title": 5, "content": 1, "category": 1},
+        max_results=3,
+    )
+    if has_specific_tool and direct_result:
+        return direct_result
+
+    # 优先使用向量搜索
+    vector_result = _search_vector("softwares", query)
+    if vector_result and has_specific_tool:
+        return vector_result
+
+    # 降级到 TF-IDF
     tfidf_result = _search_tfidf(kb, "softwares", query)
 
-    if has_specific_tool and tfidf_result:
-        return tfidf_result
+    if has_specific_tool and (vector_result or tfidf_result):
+        return vector_result or tfidf_result
 
-    # 模糊查询：在 TF-IDF 结果基础上，补充各工具概览
+    # 模糊查询：在搜索结果基础上，补充各工具概览
     tool_overviews = []
     seen_tools = set()
     for doc in kb.software_docs:
@@ -630,10 +942,15 @@ def _search_softwares(kb, query):
                 break
 
     parts = []
-    if tfidf_result:
+    if vector_result:
+        parts.append(vector_result)
+    elif tfidf_result:
         parts.append(tfidf_result)
     if tool_overviews and not has_specific_tool:
         parts.append("【可用教学工具概览】\n" + "\n---\n".join(tool_overviews))
+
+    if not parts and direct_result:
+        parts.append(direct_result)
 
     return "\n\n".join(parts)
 
@@ -646,8 +963,8 @@ def get_relevant_info(query_text, hsk_level="不限"):
     """
     检索与用户查询相关的知识库内容，注入到系统提示词中。
 
-    替代旧的 CSV 检索。根据查询路由到合适的知识域，
-    返回格式化的上下文字符串。
+    优先使用向量数据库（语义搜索），降级到 TF-IDF（统计搜索）。
+    根据查询路由到合适的知识域，返回格式化的上下文字符串。
     """
     # 防御：前端组件可能传入 list 而非 str
     if isinstance(query_text, list):
@@ -675,7 +992,10 @@ def get_relevant_info(query_text, hsk_level="不限"):
             elif domain == "softwares":
                 result = _search_softwares(_kb, query_text)
             else:
-                result = _search_tfidf(_kb, domain, query_text)
+                # 对于 teacher 和 references，优先向量搜索
+                result = _search_vector(domain, query_text)
+                if not result:
+                    result = _search_tfidf(_kb, domain, query_text)
 
             if result:
                 results.append(result)
@@ -686,6 +1006,22 @@ def get_relevant_info(query_text, hsk_level="不限"):
         combined = "\n\n".join(results)
         if len(combined) > MAX_CONTEXT_CHARS:
             combined = combined[:MAX_CONTEXT_CHARS] + "\n...（更多内容已截断）"
+        return combined
+
+    # 全局精确兜底：若路由和语义检索都没命中，则在已加载的文本记录里做直接匹配
+    exact_fallback = []
+    exact_fallback.append(_search_exact_records(_kb.mucgec_guidelines, query_text, field_names=("title", "content"), max_results=2))
+    exact_fallback.append(_search_exact_records(_kb.teacher_docs, query_text, field_names=("title", "content"), max_results=2))
+    exact_fallback.append(_search_exact_records(_kb.references, query_text, field_names=("title", "content", "chapter"), max_results=2))
+    exact_fallback.append(_search_exact_records(_kb.software_docs, query_text, field_names=("tool_name", "title", "content"), max_results=2))
+    exact_fallback.append(_search_exact_records(_kb.strategies, query_text, field_names=("title", "content"), max_results=2))
+
+    exact_fallback = [item for item in exact_fallback if item]
+    if exact_fallback:
+        combined = "\n\n".join(exact_fallback)
+        if len(combined) > MAX_CONTEXT_CHARS:
+            combined = combined[:MAX_CONTEXT_CHARS] + "\n...（更多内容已截断）"
+        logger.info("Exact fallback matched query: %s", query_text[:60])
         return combined
 
     return "未在知识库中找到直接相关内容，请根据专业知识回答。"

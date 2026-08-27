@@ -14,5 +14,12 @@ DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 # 为了保持向后兼容，默认沿用本项目此前使用的 `deepseek-chat`。
 # 如果你的账号/地区不支持该别名，可在 `.env` 中设置 `DEEPSEEK_MODEL` 为你可用的模型名。
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+DEEPSEEK_TIMEOUT_SECONDS = float(os.getenv("DEEPSEEK_TIMEOUT_SECONDS", "30"))
+DEEPSEEK_MAX_RETRIES = int(os.getenv("DEEPSEEK_MAX_RETRIES", "2"))
 
-client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
+client = OpenAI(
+    api_key=DEEPSEEK_API_KEY,
+    base_url=DEEPSEEK_BASE_URL,
+    timeout=DEEPSEEK_TIMEOUT_SECONDS,
+    max_retries=DEEPSEEK_MAX_RETRIES,
+)

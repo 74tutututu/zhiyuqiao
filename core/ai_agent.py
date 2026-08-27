@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
+
 from .account_profiles import get_teacher_profile
 from .llm_client import DEEPSEEK_MODEL, client
 from .retriever import get_relevant_info
 from .teaching_context import analyze_teaching_context
 
 REVIEW_NOTICE = "\n\n---\n⚠️ **人工审核提示**：本内容由 AI 生成，涉及具体教学决策或政策解读时，请结合实际教学环境及官方最新文件进行核实。"
+MAX_USER_INPUT_CHARS = 6000
+logger = logging.getLogger(__name__)
 
 TEACHER_ROLE_GUIDANCE = {
     "novice_teacher": "优先给出清晰步骤、可直接照搬的课堂组织方式，并减少不必要术语。",
@@ -67,8 +71,24 @@ def _build_messages(system_prompt, user_input, history=None):
     return messages
 
 
+def _normalize_user_input(user_input) -> str:
+    if isinstance(user_input, list):
+        user_input = " ".join(str(item) for item in user_input)
+    normalized = str(user_input or "").strip()
+    if not normalized:
+        raise ValueError("请输入您的问题。")
+    if len(normalized) > MAX_USER_INPUT_CHARS:
+        raise ValueError(f"输入过长，请控制在 {MAX_USER_INPUT_CHARS} 个字符以内。")
+    return normalized
+
+
 def generate_response(user_input, history=None, hsk_level="自动判断", account_id=None):
     """非流式生成回复（兼容旧调用）"""
+    try:
+        user_input = _normalize_user_input(user_input)
+    except ValueError as exc:
+        return str(exc)
+
     teacher_profile = get_teacher_profile(account_id)
     teaching_context = analyze_teaching_context(
         user_input,
@@ -89,8 +109,9 @@ def generate_response(user_input, history=None, hsk_level="自动判断", accoun
             temperature=0.3,
         )
         return response.choices[0].message.content + REVIEW_NOTICE
-    except Exception as e:
-        return f"⚠️ 顾问系统暂时无法响应，请稍后重试。\n\n错误详情：{str(e)}"
+    except Exception:
+        logger.exception("AI advisor request failed")
+        return "⚠️ 顾问系统暂时无法响应，请稍后重试。"
 
 
 def generate_response_stream(
@@ -101,9 +122,11 @@ def generate_response_stream(
     account_id=None,
 ):
     """流式生成回复 - 逐步 yield 累积文本，支持通过 cancel_event 中止"""
-    if isinstance(user_input, list):
-        user_input = " ".join(str(item) for item in user_input)
-    user_input = str(user_input)
+    try:
+        user_input = _normalize_user_input(user_input)
+    except ValueError as exc:
+        yield str(exc)
+        return
     teacher_profile = get_teacher_profile(account_id)
     teaching_context = analyze_teaching_context(
         user_input,
@@ -135,5 +158,6 @@ def generate_response_stream(
                 yield accumulated
         # 流结束后追加审核提示
         yield accumulated + REVIEW_NOTICE
-    except Exception as e:
-        yield f"⚠️ 顾问系统暂时无法响应，请稍后重试。\n\n错误详情：{str(e)}"
+    except Exception:
+        logger.exception("Streaming AI advisor request failed")
+        yield "⚠️ 顾问系统暂时无法响应，请稍后重试。"

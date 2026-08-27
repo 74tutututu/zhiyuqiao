@@ -7,3 +7,26 @@ __pycache__/
 .vscode/
 .venv/
 *.sqlite3
+.pytest_cache/
+.ruff_cache/
+node_modules/
+.coverage
+htmlcov/
+data/vectors/
+data/vectors_legacy*/
+database.rar
+migration.log
+*.code-workspace
+
+# Public repository: keep identity-bearing application materials local.
+00_项目管理/PROJECT.md
+04_原始数据_受限/
+09_社会实践成果/
+10_知行杯材料/
+output/xlsx/
+scripts/build_formal_docs.py
+scripts/build_zhixing_summary.mjs
+*.inspect.ndjson
+OPTIMIZATION_REPORT.md
+VECTOR_DB_MIGRATION.md
+migrate_hsk_only.py

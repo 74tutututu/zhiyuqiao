@@ -20,17 +20,17 @@
             <div class="form-grid">
                 <label class="field">
                     <span>账号</span>
-                    <input type="text" name="username" value="{{ form_data.username or '' }}" placeholder="建议使用英文字母或数字" required>
+                    <input type="text" name="username" value="{{ form_data.username or '' }}" placeholder="建议使用英文字母或数字" autocomplete="username" required>
                 </label>
                 <label class="field">
                     <span>账号名</span>
-                    <input type="text" name="display_name" value="{{ form_data.display_name or '' }}" placeholder="例如：葡语教学老师" required>
+                    <input type="text" name="display_name" value="{{ form_data.display_name or '' }}" placeholder="例如：葡语教学老师" autocomplete="name" required>
                 </label>
             </div>
 
             <label class="field">
                 <span>密码</span>
-                <input type="password" name="password" placeholder="请输入密码" required>
+                <input type="password" name="password" placeholder="请输入密码" autocomplete="new-password" required>
             </label>
 
             <fieldset class="field-group">

@@ -24,26 +24,87 @@
     }
 
     function renderMarkdownLite(text) {
-        const normalized = escapeHtml(text).replace(/\r\n/g, "\n");
-        const blocks = normalized.split(/\n\n+/).map((item) => item.trim()).filter(Boolean);
-        const rendered = blocks.map((block) => {
-            if (block.startsWith("### ")) {
-                return `<h3>${block.slice(4)}</h3>`;
+        const lines = escapeHtml(text).replace(/\r\n/g, "\n").split("\n");
+        const html = [];
+
+        function inline(value) {
+            return value
+                .replace(/`([^`]+)`/g, "<code>$1</code>")
+                .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+        }
+
+        function isTableSeparator(value) {
+            return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(value);
+        }
+
+        function tableCells(value) {
+            return value.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+        }
+
+        let index = 0;
+        while (index < lines.length) {
+            const line = lines[index].trim();
+            if (!line) {
+                index += 1;
+                continue;
             }
-            const lines = block.split("\n");
-            if (lines.every((line) => line.trim().startsWith("- "))) {
-                const items = lines
-                    .map((line) => line.trim().slice(2))
-                    .map((line) => `<li>${line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</li>`)
-                    .join("");
-                return `<ul>${items}</ul>`;
+            if (index + 1 < lines.length && line.includes("|") && isTableSeparator(lines[index + 1])) {
+                const headers = tableCells(line);
+                index += 2;
+                const rows = [];
+                while (index < lines.length && lines[index].includes("|") && lines[index].trim()) {
+                    rows.push(tableCells(lines[index]));
+                    index += 1;
+                }
+                html.push(`<div class="table-scroll"><table><thead><tr>${headers.map((cell) => `<th>${inline(cell)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((_, cellIndex) => `<td>${inline(row[cellIndex] || "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`);
+                continue;
             }
-            const html = lines
-                .map((line) => line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"))
-                .join("<br>");
-            return `<p>${html}</p>`;
-        });
-        return rendered.join("");
+            const heading = line.match(/^(#{1,3})\s+(.+)$/);
+            if (heading) {
+                const level = heading[1].length;
+                html.push(`<h${level}>${inline(heading[2])}</h${level}>`);
+                index += 1;
+                continue;
+            }
+            if (/^(-{3,}|\*{3,})$/.test(line)) {
+                html.push("<hr>");
+                index += 1;
+                continue;
+            }
+            const unordered = /^[-*]\s+/.test(line);
+            const ordered = /^\d+[.)]\s+/.test(line);
+            if (unordered || ordered) {
+                const tag = unordered ? "ul" : "ol";
+                const matcher = unordered ? /^[-*]\s+/ : /^\d+[.)]\s+/;
+                const items = [];
+                while (index < lines.length && matcher.test(lines[index].trim())) {
+                    items.push(`<li>${inline(lines[index].trim().replace(matcher, ""))}</li>`);
+                    index += 1;
+                }
+                html.push(`<${tag}>${items.join("")}</${tag}>`);
+                continue;
+            }
+            if (line.startsWith("&gt; ")) {
+                const quotes = [];
+                while (index < lines.length && lines[index].trim().startsWith("&gt; ")) {
+                    quotes.push(inline(lines[index].trim().slice(5)));
+                    index += 1;
+                }
+                html.push(`<blockquote>${quotes.join("<br>")}</blockquote>`);
+                continue;
+            }
+            const paragraph = [];
+            while (index < lines.length && lines[index].trim()) {
+                const current = lines[index].trim();
+                if (paragraph.length && (/^(#{1,3})\s+/.test(current) || /^[-*]\s+/.test(current) || /^\d+[.)]\s+/.test(current))) {
+                    break;
+                }
+                paragraph.push(inline(current));
+                index += 1;
+            }
+            html.push(`<p>${paragraph.join("<br>")}</p>`);
+        }
+        return html.join("");
     }
 
     function appendMessage(role, text, options = {}) {

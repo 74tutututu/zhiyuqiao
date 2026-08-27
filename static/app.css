@@ -430,13 +430,98 @@ a:hover {
     font-size: 18px;
 }
 
+.assistant-rendered h1,
+.assistant-rendered h2,
+.assistant-rendered h3 {
+    line-height: 1.35;
+    color: var(--text-strong);
+}
+
+.assistant-rendered h1 {
+    margin: 4px 0 14px;
+    font-size: 22px;
+}
+
+.assistant-rendered h2 {
+    margin: 18px 0 10px;
+    font-size: 20px;
+}
+
 .assistant-rendered p {
     margin: 8px 0;
 }
 
-.assistant-rendered ul {
+.assistant-rendered ul,
+.assistant-rendered ol {
     margin: 8px 0 8px 18px;
     padding: 0;
+}
+
+.assistant-rendered li + li {
+    margin-top: 5px;
+}
+
+.assistant-rendered code {
+    padding: 2px 5px;
+    border-radius: 5px;
+    background: rgba(128, 70, 214, 0.1);
+    font-family: Consolas, "SFMono-Regular", monospace;
+    font-size: 0.92em;
+}
+
+.assistant-rendered blockquote {
+    margin: 10px 0;
+    padding: 8px 12px;
+    border-left: 3px solid var(--primary);
+    background: rgba(128, 70, 214, 0.06);
+    color: var(--text-muted);
+}
+
+.assistant-rendered hr {
+    margin: 16px 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+}
+
+.assistant-rendered .table-scroll {
+    max-width: 100%;
+    margin: 12px 0;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: white;
+}
+
+.assistant-rendered table {
+    width: 100%;
+    min-width: 520px;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.assistant-rendered th,
+.assistant-rendered td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+    white-space: normal;
+}
+
+.assistant-rendered th {
+    background: rgba(128, 70, 214, 0.08);
+    color: var(--text-strong);
+    font-weight: 700;
+}
+
+.assistant-rendered tr:last-child td {
+    border-bottom: 0;
+}
+
+.assistant-rendered th:last-child,
+.assistant-rendered td:last-child {
+    border-right: 0;
 }
 
 .composer-card {

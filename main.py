@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import os
 from pathlib import Path
 from typing import Any
 
@@ -87,6 +88,7 @@ def _redirect_with_session(url: str, session_id: str) -> RedirectResponse:
         session_id,
         httponly=True,
         samesite="lax",
+        secure=os.getenv("ZHIYUQIAO_SECURE_COOKIES", "0") == "1",
         max_age=SESSION_TTL_DAYS * 24 * 60 * 60,
         path="/",
     )
@@ -341,7 +343,7 @@ async def api_message(request: Request, payload: AssistantMessageRequest):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"系统暂时不可用：{str(exc)}") from exc
+        raise HTTPException(status_code=500, detail="系统暂时不可用，请稍后重试。") from exc
 
     return JSONResponse(
         {
@@ -353,4 +355,4 @@ async def api_message(request: Request, payload: AssistantMessageRequest):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "service": "zhiyuqiao"}
