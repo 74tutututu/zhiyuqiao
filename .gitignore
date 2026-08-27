@@ -23,6 +23,7 @@ migration.log
 04_原始数据_受限/
 09_社会实践成果/
 10_知行杯材料/
+11_提交包/
 output/xlsx/
 scripts/build_formal_docs.py
 scripts/build_zhixing_summary.mjs
