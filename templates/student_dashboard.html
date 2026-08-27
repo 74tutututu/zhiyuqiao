@@ -34,9 +34,9 @@
                 <p class="kicker kicker-light">在上海，学中文</p>
                 <h1>今天，从一条城市线索开始。</h1>
                 <p>观察建筑、倾听城市语言，用已经掌握的中文完成一次真实交流。</p>
-                <div class="hero-actions"><button class="light-btn" type="button" data-skill-target="culture_explorer" data-prompt="我想从外滩开始认识上海。请按我的中文水平教我关键词，并给我一个可以完成的小任务。">开始文化探索</button><button class="glass-btn" type="button" data-skill-target="speaking_partner" data-prompt="和我练习向朋友介绍外滩与陆家嘴，你先问我一个简单问题。">练习开口表达</button></div>
+                <div class="hero-actions"><button class="light-btn" type="button" data-skill-target="culture_explorer" data-topic="外滩与陆家嘴" data-prompt="我想从外滩开始认识上海。请按我的中文水平教我关键词，并给我一个可以完成的小任务。">开始文化探索</button><button class="glass-btn" type="button" data-skill-target="speaking_partner" data-topic="外滩与陆家嘴" data-prompt="和我练习向朋友介绍外滩与陆家嘴，你先问我一个简单问题。">练习开口表达</button></div>
             </div>
-            <div class="level-card"><span>我的中文</span><strong>{{ user.student_level_label }}</strong><small>{{ user.learning_goal_label }}</small><div class="progress-track progress-empty" aria-label="尚未记录学习进度"><i style="width: 0"></i></div><em>完成第一个文化任务后，这里会开始记录进度。</em></div>
+            <div class="level-card"><span>我的中文</span><strong>{{ user.student_level_label }}</strong><small>{{ user.learning_goal_label }}</small><div id="progress-track" class="progress-track" role="progressbar" aria-label="海派文化学习进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ learning_progress.percent }}"><i id="progress-fill" style="width: {{ learning_progress.percent }}%"></i></div><em id="progress-copy">已完成 {{ learning_progress.completed }} / {{ learning_progress.total }} 条文化线索</em></div>
         </section>
 
         <section class="content-section">
@@ -50,7 +50,7 @@
                     ('建筑可阅读','材料 × 故事','从一扇门讲一个上海故事','怎样用简单中文描述一栋上海老建筑？'),
                     ('杨浦滨江','工业 × 更新','看见过去如何进入今天','请带我完成杨浦滨江中文观察任务。')
                 ] %}
-                {% for title, contrast, task, prompt in student_topics %}<button class="student-topic" type="button" data-skill-target="culture_explorer" data-prompt="{{ prompt }}"><span>{{ '%02d'|format(loop.index) }}</span><div><small>{{ contrast }}</small><b>{{ title }}</b><p>{{ task }}</p></div><i>开始 →</i></button>{% endfor %}
+                {% for title, contrast, task, prompt in student_topics %}<button class="student-topic" type="button" data-skill-target="culture_explorer" data-topic="{{ title }}" data-prompt="{{ prompt }}"><span>{{ '%02d'|format(loop.index) }}</span><div><small>{{ contrast }}</small><b>{{ title }}</b><p>{{ task }}</p></div><i>开始 →</i></button>{% endfor %}
             </div>
         </section>
 
@@ -60,9 +60,14 @@
             <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
             <div class="composer-card"><label class="sr-only" for="composer-input">向学习伙伴提问</label><textarea id="composer-input" rows="4" maxlength="6000" placeholder="可以用中文或你设置的讲解语言提问。例如：‘侬好’是什么意思？"></textarea><div class="composer-footer"><span id="character-count">0 / 6000</span><div class="action-row"><button id="clear-btn" class="quiet-btn" type="button">清空</button><button id="send-btn" class="send-btn" type="button">发送 <span>↗</span></button></div></div></div>
         </section>
+
+        <section class="record-section" aria-labelledby="learning-record-title">
+            <div class="section-heading section-heading-row"><div><p class="kicker">MY LEARNING RECORD</p><h2 id="learning-record-title">我的学习记录</h2></div><span class="section-hint">保存 AI 给出的任务，完成后写下真实收获</span></div>
+            <div id="student-task-list" class="record-grid" aria-live="polite"></div>
+        </section>
     </section>
 </main>
 
-<script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "student", csrfToken: {{ csrf_token | tojson }} };</script>
+<script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "student", csrfToken: {{ csrf_token | tojson }}, taskRecords: {{ learning_tasks | tojson }}, progress: {{ learning_progress | tojson }} };</script>
 <script src="{{ url_for('static', path='/assistant.js') }}"></script>
 {% endblock %}

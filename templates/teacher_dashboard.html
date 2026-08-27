@@ -31,8 +31,8 @@
                 <h1>{{ user.display_name }}，把上海变成一间中文课堂。</h1>
                 <p>从真实的城市场景出发，生成语言支架清晰、文化信息可核验、评价环节完整的教学方案。</p>
                 <div class="hero-actions">
-                    <button class="light-btn" type="button" data-skill-target="haipai_lesson_lab" data-prompt="为HSK2学习者设计一节30分钟的外滩与陆家嘴对比课，包含文化事实核验、语言支架和形成性评价。">设计一节海派文化课</button>
-                    <button class="glass-btn" type="button" data-skill-target="bridge_lesson_design" data-prompt="把杨浦滨江工业遗产设计成一项可在现场完成的小组中文任务。">生成现场任务</button>
+                    <button class="light-btn" type="button" data-skill-target="haipai_lesson_lab" data-topic="外滩与陆家嘴" data-prompt="为HSK2学习者设计一节30分钟的外滩与陆家嘴对比课，包含文化事实核验、语言支架和形成性评价。">设计一节海派文化课</button>
+                    <button class="glass-btn" type="button" data-skill-target="bridge_lesson_design" data-topic="杨浦滨江" data-prompt="把杨浦滨江工业遗产设计成一项可在现场完成的小组中文任务。">生成现场任务</button>
                 </div>
             </div>
             <div class="hero-metrics">
@@ -51,7 +51,7 @@
                     ('05','建筑可阅读','城市记忆','把建筑可阅读设计成中级中文项目。'),
                     ('06','杨浦滨江','工业遗产','把杨浦滨江工业遗产转化为HSK3—4口语任务。')
                 ] %}
-                {% for no, title, tag, prompt in teacher_topics %}<button class="culture-card" type="button" data-skill-target="haipai_lesson_lab" data-prompt="{{ prompt }}"><span>{{ no }}</span><b>{{ title }}</b><small>{{ tag }}</small><i>↗</i></button>{% endfor %}
+                {% for no, title, tag, prompt in teacher_topics %}<button class="culture-card" type="button" data-skill-target="haipai_lesson_lab" data-topic="{{ title }}" data-prompt="{{ prompt }}"><span>{{ no }}</span><b>{{ title }}</b><small>{{ tag }}</small><i>↗</i></button>{% endfor %}
             </div>
         </section>
 
@@ -67,9 +67,14 @@
                 <div class="composer-footer"><span id="character-count">0 / 6000</span><div class="action-row"><button id="clear-btn" class="quiet-btn" type="button">清空</button><button id="send-btn" class="send-btn" type="button">发送 <span>↗</span></button></div></div>
             </div>
         </section>
+
+        <section class="record-section" aria-labelledby="artifact-list-title">
+            <div class="section-heading section-heading-row"><div><p class="kicker">TEACHING ARCHIVE</p><h2 id="artifact-list-title">教案草稿与审核</h2></div><span class="section-hint">保存 AI 产出，进入编辑页核验后再导出</span></div>
+            <div id="teacher-artifact-list" class="record-grid" aria-live="polite"></div>
+        </section>
     </section>
 </main>
 
-<script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "teacher", csrfToken: {{ csrf_token | tojson }} };</script>
+<script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "teacher", csrfToken: {{ csrf_token | tojson }}, artifacts: {{ artifacts | tojson }} };</script>
 <script src="{{ url_for('static', path='/assistant.js') }}"></script>
 {% endblock %}

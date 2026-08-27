@@ -11,7 +11,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, Sequence
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, select
+from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, func, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base, get_db_session, init_database
@@ -109,6 +109,35 @@ class SessionRecord(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     user: Mapped[UserRecord] = relationship(back_populates="sessions")
+
+
+class LearningTaskRecord(Base):
+    __tablename__ = "learning_tasks"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    topic: Mapped[str] = mapped_column(String(64), index=True)
+    title: Mapped[str] = mapped_column(String(128))
+    prompt: Mapped[str] = mapped_column(Text)
+    assistant_reply: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="planned", index=True)
+    reflection: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class TeacherArtifactRecord(Base):
+    __tablename__ = "teacher_artifacts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(128))
+    skill_key: Mapped[str] = mapped_column(String(64))
+    prompt: Mapped[str] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(Text)
+    review_status: Mapped[str] = mapped_column(String(24), default="draft")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 @dataclass(frozen=True)
@@ -639,3 +668,193 @@ def delete_user_sessions_for_user(user_id: str, *, exclude_session_id: str | Non
             if exclude_session_id and record.session_id == exclude_session_id:
                 continue
             session.delete(record)
+
+
+def _task_to_dict(record: LearningTaskRecord) -> dict[str, object]:
+    return {
+        "id": record.id,
+        "topic": record.topic,
+        "title": record.title,
+        "prompt": record.prompt,
+        "assistant_reply": record.assistant_reply,
+        "status": record.status,
+        "reflection": record.reflection or "",
+        "created_at": record.created_at.isoformat() if record.created_at else "",
+        "completed_at": record.completed_at.isoformat() if record.completed_at else "",
+    }
+
+
+def list_learning_tasks(user_id: str, limit: int = 20) -> list[dict[str, object]]:
+    initialize_profile_store()
+    with get_db_session() as session:
+        records = session.scalars(
+            select(LearningTaskRecord)
+            .where(LearningTaskRecord.user_id == str(user_id))
+            .order_by(LearningTaskRecord.created_at.desc())
+            .limit(max(1, min(int(limit), 50)))
+        ).all()
+    return [_task_to_dict(record) for record in records]
+
+
+def get_learning_progress(user_id: str, total_topics: int = 6) -> dict[str, int]:
+    initialize_profile_store()
+    with get_db_session() as session:
+        completed_topics = session.scalar(
+            select(func.count(func.distinct(LearningTaskRecord.topic))).where(
+                (LearningTaskRecord.user_id == str(user_id)) & (LearningTaskRecord.status == "completed")
+            )
+        ) or 0
+    completed = min(int(completed_topics), max(1, int(total_topics)))
+    return {
+        "completed": completed,
+        "total": max(1, int(total_topics)),
+        "percent": round(completed / max(1, int(total_topics)) * 100),
+    }
+
+
+def create_learning_task(
+    user_id: str,
+    *,
+    topic: str,
+    title: str,
+    prompt: str,
+    assistant_reply: str,
+) -> dict[str, object]:
+    initialize_profile_store()
+    record = LearningTaskRecord(
+        user_id=str(user_id),
+        topic=str(topic or "自主探索").strip()[:64] or "自主探索",
+        title=str(title or "学习任务").strip()[:128] or "学习任务",
+        prompt=str(prompt or "").strip()[:6000],
+        assistant_reply=str(assistant_reply or "").strip()[:16000],
+        status="planned",
+    )
+    with get_db_session() as session:
+        count = session.scalar(select(func.count()).select_from(LearningTaskRecord).where(LearningTaskRecord.user_id == str(user_id))) or 0
+        if count >= 50:
+            raise ValueError("任务档案已达到50条，请先整理已有记录。")
+        session.add(record)
+        session.flush()
+        session.refresh(record)
+        return _task_to_dict(record)
+
+
+def complete_learning_task(user_id: str, task_id: str, reflection: str) -> dict[str, object]:
+    initialize_profile_store()
+    resolved_reflection = str(reflection or "").strip()
+    if len(resolved_reflection) < 2:
+        raise ValueError("请用至少2个字符写下完成情况或学习收获。")
+    with get_db_session() as session:
+        record = session.scalar(
+            select(LearningTaskRecord).where(
+                (LearningTaskRecord.id == str(task_id)) & (LearningTaskRecord.user_id == str(user_id))
+            )
+        )
+        if record is None:
+            raise ValueError("没有找到这条学习任务。")
+        record.status = "completed"
+        record.reflection = resolved_reflection[:2000]
+        record.completed_at = datetime.now(timezone.utc)
+        session.add(record)
+        session.flush()
+        session.refresh(record)
+        return _task_to_dict(record)
+
+
+def _artifact_to_dict(record: TeacherArtifactRecord) -> dict[str, object]:
+    return {
+        "id": record.id,
+        "title": record.title,
+        "skill_key": record.skill_key,
+        "prompt": record.prompt,
+        "content": record.content,
+        "review_status": record.review_status,
+        "created_at": record.created_at.isoformat() if record.created_at else "",
+        "updated_at": record.updated_at.isoformat() if record.updated_at else "",
+    }
+
+
+def list_teacher_artifacts(user_id: str, limit: int = 20) -> list[dict[str, object]]:
+    initialize_profile_store()
+    with get_db_session() as session:
+        records = session.scalars(
+            select(TeacherArtifactRecord)
+            .where(TeacherArtifactRecord.user_id == str(user_id))
+            .order_by(TeacherArtifactRecord.updated_at.desc())
+            .limit(max(1, min(int(limit), 50)))
+        ).all()
+    return [_artifact_to_dict(record) for record in records]
+
+
+def create_teacher_artifact(
+    user_id: str,
+    *,
+    title: str,
+    skill_key: str,
+    prompt: str,
+    content: str,
+) -> dict[str, object]:
+    initialize_profile_store()
+    record = TeacherArtifactRecord(
+        user_id=str(user_id),
+        title=str(title or "教案草稿").strip()[:128] or "教案草稿",
+        skill_key=str(skill_key or "teacher_advisor").strip()[:64],
+        prompt=str(prompt or "").strip()[:6000],
+        content=str(content or "").strip()[:30000],
+        review_status="draft",
+    )
+    with get_db_session() as session:
+        count = session.scalar(select(func.count()).select_from(TeacherArtifactRecord).where(TeacherArtifactRecord.user_id == str(user_id))) or 0
+        if count >= 50:
+            raise ValueError("教案草稿已达到50份，请先整理已有内容。")
+        session.add(record)
+        session.flush()
+        session.refresh(record)
+        return _artifact_to_dict(record)
+
+
+def get_teacher_artifact(user_id: str, artifact_id: str) -> dict[str, object] | None:
+    initialize_profile_store()
+    with get_db_session() as session:
+        record = session.scalar(
+            select(TeacherArtifactRecord).where(
+                (TeacherArtifactRecord.id == str(artifact_id)) & (TeacherArtifactRecord.user_id == str(user_id))
+            )
+        )
+    return _artifact_to_dict(record) if record is not None else None
+
+
+def update_teacher_artifact(
+    user_id: str,
+    artifact_id: str,
+    *,
+    title: str,
+    content: str,
+    review_status: str,
+) -> dict[str, object]:
+    initialize_profile_store()
+    resolved_title = str(title or "").strip()
+    resolved_content = str(content or "").strip()
+    resolved_status = str(review_status or "draft").strip()
+    if not resolved_title:
+        raise ValueError("标题不能为空。")
+    if not resolved_content:
+        raise ValueError("教案内容不能为空。")
+    if resolved_status not in {"draft", "reviewed"}:
+        raise ValueError("无效的审核状态。")
+    with get_db_session() as session:
+        record = session.scalar(
+            select(TeacherArtifactRecord).where(
+                (TeacherArtifactRecord.id == str(artifact_id)) & (TeacherArtifactRecord.user_id == str(user_id))
+            )
+        )
+        if record is None:
+            raise ValueError("没有找到这份教案草稿。")
+        record.title = resolved_title[:128]
+        record.content = resolved_content[:30000]
+        record.review_status = resolved_status
+        record.updated_at = datetime.now(timezone.utc)
+        session.add(record)
+        session.flush()
+        session.refresh(record)
+        return _artifact_to_dict(record)

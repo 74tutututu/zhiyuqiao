@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -23,13 +23,21 @@ from core.account_profiles import (
     TEACHER_LEVEL_LABELS,
     THEME_LABELS,
     authenticate_teacher,
+    complete_learning_task,
     count_users,
+    create_learning_task,
+    create_teacher_artifact,
     create_user_session,
     delete_user_sessions_for_user,
     delete_user_session,
     get_teacher_profile_by_session,
+    get_learning_progress,
+    get_teacher_artifact,
     initialize_profile_store,
+    list_learning_tasks,
+    list_teacher_artifacts,
     register_account,
+    update_teacher_artifact,
     update_account_profile,
 )
 from core.assistant_service import list_assistant_skills, run_assistant_turn
@@ -100,6 +108,24 @@ class AssistantMessageRequest(BaseModel):
     skill_key: str = Field(default="teacher_advisor", description="当前选择的 skill")
     text: str = Field(..., min_length=1, max_length=6000, description="用户输入")
     history: list[ChatMessage] = Field(default_factory=list, max_length=20, description="当前会话历史")
+
+
+class LearningTaskCreateRequest(BaseModel):
+    topic: str = Field(default="自主探索", max_length=64)
+    title: str = Field(default="学习任务", max_length=128)
+    prompt: str = Field(..., min_length=1, max_length=6000)
+    assistant_reply: str = Field(..., min_length=1, max_length=16000)
+
+
+class LearningTaskCompleteRequest(BaseModel):
+    reflection: str = Field(..., min_length=2, max_length=2000)
+
+
+class TeacherArtifactCreateRequest(BaseModel):
+    title: str = Field(default="教案草稿", max_length=128)
+    skill_key: str = Field(default="teacher_advisor", max_length=64)
+    prompt: str = Field(..., min_length=1, max_length=6000)
+    content: str = Field(..., min_length=1, max_length=30000)
 
 
 def _theme_choices() -> list[tuple[str, str]]:
@@ -342,6 +368,7 @@ async def teacher_workspace(request: Request):
             page_title="教师工作台",
             user=user.to_dict(),
             skills=list_assistant_skills("teacher"),
+            artifacts=list_teacher_artifacts(user.user_id),
         ),
     )
 
@@ -369,6 +396,8 @@ async def student_workspace(request: Request):
             page_title="学习空间",
             user=user.to_dict(),
             skills=list_assistant_skills("student"),
+            learning_tasks=list_learning_tasks(user.user_id),
+            learning_progress=get_learning_progress(user.user_id),
         ),
     )
 
@@ -512,6 +541,161 @@ async def api_message(request: Request, payload: AssistantMessageRequest):
             "skill_key": payload.skill_key,
             "sources": sources,
         }
+    )
+
+
+@app.get("/api/student/tasks")
+async def api_student_tasks(request: Request):
+    user = _current_user(request)
+    if user is None:
+        raise HTTPException(status_code=401, detail="未登录")
+    if user.account_role != "student":
+        raise HTTPException(status_code=403, detail="仅学习者可以访问学习任务。")
+    return {
+        "tasks": list_learning_tasks(user.user_id),
+        "progress": get_learning_progress(user.user_id),
+    }
+
+
+@app.post("/api/student/tasks")
+async def api_create_student_task(request: Request, payload: LearningTaskCreateRequest):
+    user = _current_user(request)
+    if user is None:
+        raise HTTPException(status_code=401, detail="未登录")
+    if user.account_role != "student":
+        raise HTTPException(status_code=403, detail="仅学习者可以保存学习任务。")
+    if not validate_csrf_token(request, request.headers.get("x-csrf-token")):
+        raise HTTPException(status_code=403, detail="页面已过期，请刷新后重试。")
+    try:
+        task = await run_in_threadpool(
+            create_learning_task,
+            user.user_id,
+            topic=payload.topic,
+            title=payload.title,
+            prompt=payload.prompt,
+            assistant_reply=payload.assistant_reply,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"task": task, "progress": get_learning_progress(user.user_id)}
+
+
+@app.post("/api/student/tasks/{task_id}/complete")
+async def api_complete_student_task(request: Request, task_id: str, payload: LearningTaskCompleteRequest):
+    user = _current_user(request)
+    if user is None:
+        raise HTTPException(status_code=401, detail="未登录")
+    if user.account_role != "student":
+        raise HTTPException(status_code=403, detail="仅学习者可以完成学习任务。")
+    if not validate_csrf_token(request, request.headers.get("x-csrf-token")):
+        raise HTTPException(status_code=403, detail="页面已过期，请刷新后重试。")
+    try:
+        task = await run_in_threadpool(complete_learning_task, user.user_id, task_id, payload.reflection)
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if "没有找到" in str(exc) else 400, detail=str(exc)) from exc
+    return {"task": task, "progress": get_learning_progress(user.user_id)}
+
+
+@app.get("/api/teacher/artifacts")
+async def api_teacher_artifacts(request: Request):
+    user = _current_user(request)
+    if user is None:
+        raise HTTPException(status_code=401, detail="未登录")
+    if user.account_role != "teacher":
+        raise HTTPException(status_code=403, detail="仅教师可以访问教案草稿。")
+    return {"artifacts": list_teacher_artifacts(user.user_id)}
+
+
+@app.post("/api/teacher/artifacts")
+async def api_create_teacher_artifact(request: Request, payload: TeacherArtifactCreateRequest):
+    user = _current_user(request)
+    if user is None:
+        raise HTTPException(status_code=401, detail="未登录")
+    if user.account_role != "teacher":
+        raise HTTPException(status_code=403, detail="仅教师可以保存教案草稿。")
+    if not validate_csrf_token(request, request.headers.get("x-csrf-token")):
+        raise HTTPException(status_code=403, detail="页面已过期，请刷新后重试。")
+    try:
+        artifact = await run_in_threadpool(
+            create_teacher_artifact,
+            user.user_id,
+            title=payload.title,
+            skill_key=payload.skill_key,
+            prompt=payload.prompt,
+            content=payload.content,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"artifact": artifact}
+
+
+@app.get("/teacher/artifacts/{artifact_id}", response_class=HTMLResponse)
+async def teacher_artifact_page(request: Request, artifact_id: str):
+    user, redirect = _login_required(request)
+    if redirect is not None:
+        return redirect
+    if user.account_role != "teacher":
+        return RedirectResponse(url="/student", status_code=303)
+    artifact = get_teacher_artifact(user.user_id, artifact_id)
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="没有找到这份教案草稿。")
+    return templates.TemplateResponse(
+        "artifact_print.html",
+        _page_context(
+            request,
+            page_title=str(artifact["title"]),
+            user=user.to_dict(),
+            artifact=artifact,
+            success=request.query_params.get("saved") == "1",
+            error="",
+        ),
+    )
+
+
+@app.post("/teacher/artifacts/{artifact_id}", response_class=HTMLResponse)
+async def teacher_artifact_update(request: Request, artifact_id: str):
+    user, redirect = _login_required(request)
+    if redirect is not None:
+        return redirect
+    if user.account_role != "teacher":
+        raise HTTPException(status_code=403, detail="仅教师可以编辑教案草稿。")
+    form = await request.form()
+    if not validate_csrf_token(request, form.get("csrf_token")):
+        raise HTTPException(status_code=403, detail="页面已过期，请刷新后重试。")
+    try:
+        await run_in_threadpool(
+            update_teacher_artifact,
+            user.user_id,
+            artifact_id,
+            title=str(form.get("title", "")),
+            content=str(form.get("content", "")),
+            review_status=str(form.get("review_status", "draft")),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if "没有找到" in str(exc) else 400, detail=str(exc)) from exc
+    return RedirectResponse(url=f"/teacher/artifacts/{artifact_id}?saved=1", status_code=303)
+
+
+@app.get("/teacher/artifacts/{artifact_id}/download", response_class=PlainTextResponse)
+async def teacher_artifact_download(request: Request, artifact_id: str):
+    user, redirect = _login_required(request)
+    if redirect is not None:
+        return redirect
+    if user.account_role != "teacher":
+        raise HTTPException(status_code=403, detail="仅教师可以导出教案草稿。")
+    artifact = get_teacher_artifact(user.user_id, artifact_id)
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="没有找到这份教案草稿。")
+    markdown = (
+        f"# {artifact['title']}\n\n"
+        f"> 审核状态：{'教师已审核' if artifact['review_status'] == 'reviewed' else 'AI 草稿，待教师审核'}\n\n"
+        f"## 原始教学需求\n\n{artifact['prompt']}\n\n"
+        f"## 教案内容\n\n{artifact['content']}\n"
+    )
+    return PlainTextResponse(
+        markdown,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="zhiyuqiao-{artifact_id}.md"'},
     )
 
 
