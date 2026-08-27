@@ -28,6 +28,7 @@
 
         <form method="post" class="stack-form" data-profile-form>
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="username" value="{{ user.username }}" autocomplete="username">
             <div class="form-grid">
                 <label class="field"><span>登录账号</span><input type="text" value="{{ user.username }}" disabled></label>
                 <label class="field"><span>显示名称</span><input type="text" name="display_name" value="{{ user.display_name }}" autocomplete="name" required></label>
@@ -55,10 +56,24 @@
             <fieldset class="field-group"><legend>讲解或教学语言（可多选）</legend><div class="option-grid">{% for language in language_options %}<label class="checkbox-chip"><input type="checkbox" name="teaching_languages" value="{{ language }}" {% if language in user.teaching_languages %}checked{% endif %}><span>{{ language }}</span></label>{% endfor %}</div></fieldset>
 
             <div class="form-grid">
+                <label class="field"><span>首选讲解语言</span><select name="primary_language">{% for language in language_options %}<option value="{{ language }}" {% if language == user.instruction_language %}selected{% endif %}>{{ language }}</option>{% endfor %}</select></label>
                 <label class="field"><span>界面主题</span><select name="theme_name">{% for label, value in theme_choices %}<option value="{{ value }}" {% if value == user.theme_name %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-                <label class="field"><span>新密码（选填）</span><input type="password" name="password" placeholder="至少8个字符；不修改可留空" minlength="8" autocomplete="new-password"></label>
             </div>
+            <label class="field compact-field"><span>新密码（选填）</span><input type="password" name="password" placeholder="至少8个字符；不修改可留空" minlength="8" autocomplete="new-password"></label>
             <div class="form-actions"><button class="primary-btn" type="submit">保存设置</button><a class="secondary-btn" href="{{ user.workspace_url }}">取消</a></div>
+        </form>
+    </section>
+
+    <section class="settings-panel danger-panel" aria-labelledby="delete-account-title">
+        <div class="section-heading"><p class="kicker">DATA CONTROL</p><h2 id="delete-account-title">注销账号与删除数据</h2><p>此操作会永久删除账号、学习任务、反思记录、教案草稿和登录会话，无法撤销。</p></div>
+        <form class="stack-form" method="post" action="/account/delete" onsubmit="return window.confirm('确认永久删除账号及全部个人档案吗？此操作无法撤销。')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="username" value="{{ user.username }}" autocomplete="username">
+            <div class="form-grid">
+                <label class="field"><span>当前密码</span><input type="password" name="current_password" autocomplete="current-password" required></label>
+                <label class="field"><span>输入登录账号 {{ user.username }} 以确认</span><input name="confirmation" autocomplete="off" required></label>
+            </div>
+            <div class="form-actions"><button class="danger-btn" type="submit">永久删除我的账号</button></div>
         </form>
     </section>
 </main>

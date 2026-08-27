@@ -81,6 +81,7 @@ class UserRecord(Base):
     password_hash: Mapped[str] = mapped_column(String(256))
     password_salt: Mapped[str] = mapped_column(String(128))
     teaching_languages: Mapped[list[str]] = mapped_column(JSON, default=lambda: ["中文"])
+    primary_language: Mapped[str] = mapped_column(String(32), default="中文")
     account_role: Mapped[str] = mapped_column(String(16), default=DEFAULT_ACCOUNT_ROLE)
     teacher_level: Mapped[str] = mapped_column(String(32), default=DEFAULT_TEACHER_LEVEL)
     student_level: Mapped[str] = mapped_column(String(24), default=DEFAULT_STUDENT_LEVEL)
@@ -151,6 +152,7 @@ class AccountProfile:
     student_level: str
     learning_goal: str
     theme_name: str
+    primary_language: str = "中文"
     region: str = ""
     school_stage: str = ""
     created_at: str = ""
@@ -162,6 +164,8 @@ class AccountProfile:
 
     @property
     def instruction_language(self) -> str:
+        if self.primary_language in self.teaching_languages:
+            return self.primary_language
         return self.teaching_languages[0] if self.teaching_languages else "中文"
 
     @property
@@ -313,6 +317,7 @@ def _record_to_profile(record: UserRecord) -> AccountProfile:
         username=record.username,
         display_name=record.display_name,
         teaching_languages=tuple(languages),
+        primary_language=(record.primary_language if record.primary_language in languages else languages[0]),
         account_role=_validate_account_role(record.account_role),
         teacher_level=record.teacher_level,
         student_level=_validate_student_level(record.student_level),
@@ -334,6 +339,7 @@ def build_guest_profile() -> AccountProfile:
         student_level=DEFAULT_STUDENT_LEVEL,
         learning_goal=DEFAULT_LEARNING_GOAL,
         theme_name=DEFAULT_THEME,
+        primary_language="中文",
     )
 
 
@@ -427,6 +433,7 @@ def register_account(
     student_level: str = DEFAULT_STUDENT_LEVEL,
     learning_goal: str = DEFAULT_LEARNING_GOAL,
     theme_name: str = DEFAULT_THEME,
+    primary_language: str | None = None,
 ) -> AccountProfile:
     initialize_profile_store()
     resolved_username = str(username or "").strip()
@@ -443,6 +450,9 @@ def register_account(
         raise ValueError("密码至少需要8个字符。")
 
     normalized_languages = list(_normalize_languages(teaching_languages))
+    resolved_primary_language = str(primary_language or "").strip()
+    if resolved_primary_language not in normalized_languages:
+        resolved_primary_language = normalized_languages[0]
     resolved_account_role = _validate_account_role(account_role)
     resolved_teacher_level = _validate_teacher_level(teacher_level)
     resolved_student_level = _validate_student_level(student_level)
@@ -467,6 +477,7 @@ def register_account(
             password_hash=password_hash,
             password_salt=password_salt,
             teaching_languages=normalized_languages,
+            primary_language=resolved_primary_language,
             account_role=resolved_account_role,
             teacher_level=resolved_teacher_level,
             student_level=resolved_student_level,
@@ -531,6 +542,7 @@ def update_account_profile(
     student_level: str,
     learning_goal: str,
     theme_name: str,
+    primary_language: str | None = None,
     password: str | None = None,
 ) -> AccountProfile:
     initialize_profile_store()
@@ -547,6 +559,9 @@ def update_account_profile(
         raise ValueError("新密码至少需要8个字符。")
 
     normalized_languages = list(_normalize_languages(teaching_languages))
+    resolved_primary_language = str(primary_language or "").strip()
+    if resolved_primary_language not in normalized_languages:
+        resolved_primary_language = normalized_languages[0]
     resolved_account_role = _validate_account_role(account_role)
     resolved_teacher_level = _validate_teacher_level(teacher_level)
     resolved_student_level = _validate_student_level(student_level)
@@ -568,6 +583,7 @@ def update_account_profile(
 
         record.display_name = resolved_display_name
         record.teaching_languages = normalized_languages
+        record.primary_language = resolved_primary_language
         record.account_role = resolved_account_role
         record.teacher_level = resolved_teacher_level
         record.student_level = resolved_student_level
@@ -668,6 +684,26 @@ def delete_user_sessions_for_user(user_id: str, *, exclude_session_id: str | Non
             if exclude_session_id and record.session_id == exclude_session_id:
                 continue
             session.delete(record)
+
+
+def delete_user_account(user_id: str, *, password: str, confirmation: str) -> None:
+    """Permanently delete one account and its owned records after explicit verification."""
+    initialize_profile_store()
+    with get_db_session() as session:
+        record = session.scalar(select(UserRecord).where(UserRecord.id == str(user_id)))
+        if record is None:
+            raise ValueError("用户不存在。")
+        if not _verify_password(str(password or ""), record.password_hash, record.password_salt):
+            raise ValueError("当前密码不正确。")
+        if str(confirmation or "").strip() != record.username:
+            raise ValueError("请输入完整登录账号以确认注销。")
+        for task in session.scalars(select(LearningTaskRecord).where(LearningTaskRecord.user_id == record.id)).all():
+            session.delete(task)
+        for artifact in session.scalars(select(TeacherArtifactRecord).where(TeacherArtifactRecord.user_id == record.id)).all():
+            session.delete(artifact)
+        for user_session in session.scalars(select(SessionRecord).where(SessionRecord.user_id == record.id)).all():
+            session.delete(user_session)
+        session.delete(record)
 
 
 def _task_to_dict(record: LearningTaskRecord) -> dict[str, object]:

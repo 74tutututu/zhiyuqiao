@@ -69,6 +69,8 @@
                     </div>
                 </fieldset>
 
+                <label class="field compact-field"><span>首选讲解语言</span><select name="primary_language">{% set selected_primary = form_data.primary_language or '中文' %}{% for language in language_options %}<option value="{{ language }}" {% if language == selected_primary %}selected{% endif %}>{{ language }}</option>{% endfor %}</select><small>AI 会优先使用它解释；中文例句仍保留中文。</small></label>
+
                 <label class="field compact-field"><span>界面主题</span><select name="theme_name">{% set selected_theme = form_data.theme_name or default_theme %}{% for label, value in theme_choices %}<option value="{{ value }}" {% if value == selected_theme %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
 
                 <label class="consent-row"><input type="checkbox" name="accept_terms" value="yes" required><span>我已阅读<a href="/privacy" target="_blank">隐私与 AI 使用说明</a>，并同意不要在对话中提交敏感个人信息。</span></label>

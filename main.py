@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import json
 import os
 from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -28,6 +29,7 @@ from core.account_profiles import (
     create_learning_task,
     create_teacher_artifact,
     create_user_session,
+    delete_user_account,
     delete_user_sessions_for_user,
     delete_user_session,
     get_teacher_profile_by_session,
@@ -40,7 +42,7 @@ from core.account_profiles import (
     update_teacher_artifact,
     update_account_profile,
 )
-from core.assistant_service import list_assistant_skills, run_assistant_turn
+from core.assistant_service import list_assistant_skills, run_assistant_turn, run_assistant_turn_stream
 from core.content_catalog import get_knowledge_stats
 from core.retriever import get_haipai_source_cards
 from core.web_security import (
@@ -247,6 +249,7 @@ async def register_submit(request: Request):
         "student_level": str(form.get("student_level", "hsk3")).strip(),
         "learning_goal": str(form.get("learning_goal", "culture_explorer")).strip(),
         "theme_name": str(form.get("theme_name", DEFAULT_THEME)).strip(),
+        "primary_language": str(form.get("primary_language", "中文")).strip(),
     }
     teaching_languages = _normalize_form_languages(form.getlist("teaching_languages"))
     password = str(form.get("password", ""))
@@ -262,6 +265,7 @@ async def register_submit(request: Request):
             student_level=form_data["student_level"],
             learning_goal=form_data["learning_goal"],
             theme_name=form_data["theme_name"],
+            primary_language=form_data["primary_language"],
         )
     except ValueError as exc:
         return templates.TemplateResponse(
@@ -435,6 +439,7 @@ async def settings_submit(request: Request):
     student_level = str(form.get("student_level", user.student_level)).strip()
     learning_goal = str(form.get("learning_goal", user.learning_goal)).strip()
     theme_name = str(form.get("theme_name", DEFAULT_THEME)).strip()
+    primary_language = str(form.get("primary_language", user.instruction_language)).strip()
     password = str(form.get("password", "")).strip()
     teaching_languages = _normalize_form_languages(form.getlist("teaching_languages"))
 
@@ -448,6 +453,7 @@ async def settings_submit(request: Request):
             student_level=student_level,
             learning_goal=learning_goal,
             theme_name=theme_name,
+            primary_language=primary_language,
             password=password or None,
         )
     except ValueError as exc:
@@ -461,6 +467,7 @@ async def settings_submit(request: Request):
                 "student_level": student_level or user.student_level,
                 "learning_goal": learning_goal or user.learning_goal,
                 "theme_name": theme_name or user.theme_name,
+                "primary_language": primary_language or user.instruction_language,
             }
         )
         return templates.TemplateResponse(
@@ -541,6 +548,46 @@ async def api_message(request: Request, payload: AssistantMessageRequest):
             "skill_key": payload.skill_key,
             "sources": sources,
         }
+    )
+
+
+@app.post("/api/message/stream")
+async def api_message_stream(request: Request, payload: AssistantMessageRequest):
+    user = _current_user(request)
+    if user is None:
+        raise HTTPException(status_code=401, detail="未登录")
+    if not validate_csrf_token(request, request.headers.get("x-csrf-token")):
+        raise HTTPException(status_code=403, detail="页面已过期，请刷新后重试。")
+    allowed, retry_after = MESSAGE_LIMITER.allow(f"{client_key(request)}:{user.user_id}")
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"请求过于频繁，请在 {retry_after} 秒后重试。",
+            headers={"Retry-After": str(retry_after)},
+        )
+    allowed_keys = {item["key"] for item in list_assistant_skills(user.account_role)}
+    if payload.skill_key not in allowed_keys:
+        raise HTTPException(status_code=400, detail="当前账号不能使用该功能，请刷新页面后重试。")
+
+    def event_stream():
+        latest = ""
+        try:
+            for latest in run_assistant_turn_stream(
+                skill_key=payload.skill_key,
+                text=payload.text,
+                profile=user,
+                history=[item.model_dump() for item in payload.history],
+            ):
+                yield json.dumps({"type": "content", "content": latest}, ensure_ascii=False) + "\n"
+            sources = get_haipai_source_cards(payload.text) if payload.skill_key in {"culture_explorer", "haipai_lesson_lab", "bridge_lesson_design"} else []
+            yield json.dumps({"type": "done", "content": latest, "sources": sources}, ensure_ascii=False) + "\n"
+        except Exception:
+            yield json.dumps({"type": "error", "detail": "系统暂时不可用，请稍后重试。"}, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
 
 
@@ -650,6 +697,38 @@ async def teacher_artifact_page(request: Request, artifact_id: str):
             error="",
         ),
     )
+
+
+@app.post("/account/delete")
+async def account_delete(request: Request):
+    user, redirect = _login_required(request)
+    if redirect is not None:
+        return redirect
+    form = await request.form()
+    if not validate_csrf_token(request, form.get("csrf_token")):
+        raise HTTPException(status_code=403, detail="页面已过期，请刷新后重试。")
+    try:
+        await run_in_threadpool(
+            delete_user_account,
+            user.user_id,
+            password=str(form.get("current_password", "")),
+            confirmation=str(form.get("confirmation", "")),
+        )
+    except ValueError as exc:
+        return templates.TemplateResponse(
+            "settings.html",
+            _page_context(
+                request,
+                page_title="账号设置",
+                user=user.to_dict(),
+                success="",
+                error=str(exc),
+            ),
+            status_code=400,
+        )
+    response = RedirectResponse(url="/register", status_code=303)
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+    return response
 
 
 @app.post("/teacher/artifacts/{artifact_id}", response_class=HTMLResponse)

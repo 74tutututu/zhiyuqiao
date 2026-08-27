@@ -109,6 +109,7 @@ button { color: inherit; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .field, .field-group { display: flex; flex-direction: column; gap: 9px; }
 .field > span, .field-group legend { color: var(--ink-soft); font-size: 13px; font-weight: 800; }
+.field > small { color: var(--muted); font-size: 10px; line-height: 1.6; }
 .field input, .field select, .field textarea {
     width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--line);
     border-radius: var(--radius-sm); background: var(--paper-strong); color: var(--ink); outline: 0;
@@ -302,6 +303,7 @@ body[data-theme="academy_blue"] .message.assistant .message-bubble { background:
 .role-pill { display: inline-flex; padding: 6px 10px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 900; }.role-pill-large { padding: 8px 12px; }
 .profile-summary { margin: 28px 0 0; }.profile-summary div { padding: 14px 0; border-top: 1px solid rgba(255,255,255,.14); }.profile-summary dt { color: rgba(255,255,255,.48); font-size: 10px; }.profile-summary dd { margin: 5px 0 0; font-size: 13px; }
 .settings-panel { padding: clamp(26px, 4vw, 46px); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--paper); box-shadow: var(--shadow-sm); }.settings-panel .section-heading { margin-bottom: 30px; }
+.danger-panel { grid-column: 2; border-color: #e3b8b4; }.danger-panel .section-heading p:last-child { color: var(--muted); line-height: 1.7; }.danger-btn { min-height: 42px; padding: 10px 16px; border: 1px solid #b73d36; border-radius: 999px; background: #fff; color: #9c2e29; cursor: pointer; font-weight: 800; }.danger-btn:hover { background: #9c2e29; color: #fff; }
 
 /* Policy */
 .policy-page { width: min(820px, calc(100% - 40px)); margin: 64px auto 100px; }
@@ -324,7 +326,7 @@ body[data-theme="academy_blue"] .message.assistant .message-bubble { background:
     .app-topbar { grid-template-columns: 1fr auto; }.workspace-switch { display: none; }.top-profile { display: none; }
     .workspace-shell { grid-template-columns: minmax(0, 1fr); }.tool-sidebar { position: static; height: auto; overflow: hidden; padding: 22px; border-right: 0; border-bottom: 1px solid var(--line); }.sidebar-heading { padding-left: 4px; }.skill-list { width: 100%; max-width: 100%; flex-direction: row; overflow-x: auto; padding-bottom: 7px; }.skill-item { min-width: 230px; }.evidence-note, .learning-note { display: none; }
     .workspace-main { padding: 24px 18px 55px; }.workspace-hero { grid-template-columns: 1fr; min-height: auto; padding: 34px 26px; }.hero-metrics { grid-template-columns: repeat(3, 1fr); min-width: 0; }.hero-metrics div { border-right: 1px solid rgba(255,255,255,.2); border-bottom: 0; }.hero-metrics div:last-child { border-right: 0; }.level-card { width: 100%; }
-    .settings-layout { grid-template-columns: 1fr; margin-top: 28px; }.settings-intro { position: static; }
+    .settings-layout { grid-template-columns: 1fr; margin-top: 28px; }.settings-intro { position: static; }.danger-panel { grid-column: auto; }
 }
 
 @media (max-width: 640px) {
@@ -350,4 +352,9 @@ body[data-theme="academy_blue"] .message.assistant .message-bubble { background:
     .artifact-editor .field > span { margin-bottom: 8pt; font-size: 11pt; }
     .artifact-content-field { display: none; }
     .print-artifact-content { display: block; white-space: pre-wrap; font: 11pt/1.8 SimSun, "宋体", serif; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

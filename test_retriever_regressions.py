@@ -45,6 +45,10 @@ def test_haipai_traceable_query() -> None:
     cards = get_haipai_source_cards("杨浦滨江工业遗产")
     assert cards, "Haipai source cards returned empty"
     assert str(cards[0].get("source_url", "")).startswith("https://www.shanghai.gov.cn/")
+    assert all(card.get("topic") == "杨浦滨江" for card in cards)
+    dialect_cards = get_haipai_source_cards("为什么上海人会说‘侬好’？")
+    assert dialect_cards, "Dialect source cards returned empty"
+    assert all(card.get("topic") == "你好与侬好" for card in dialect_cards)
 
 
 if __name__ == "__main__":

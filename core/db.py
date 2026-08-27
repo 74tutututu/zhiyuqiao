@@ -81,6 +81,10 @@ def _migrate_user_profile_columns() -> None:
         statements.append(
             "ALTER TABLE users ADD COLUMN learning_goal VARCHAR(32) NOT NULL DEFAULT 'culture_explorer'"
         )
+    if "primary_language" not in existing:
+        statements.append(
+            "ALTER TABLE users ADD COLUMN primary_language VARCHAR(32) NOT NULL DEFAULT '中文'"
+        )
 
     if not statements:
         return

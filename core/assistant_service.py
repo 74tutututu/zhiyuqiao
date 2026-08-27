@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from .account_profiles import AccountProfile
-from .ai_agent import generate_response
-from .skills.runtime import execute_skill, render_skill_result
+from .ai_agent import generate_response, generate_response_stream
+from .skills.runtime import execute_skill, execute_skill_stream, render_skill_result
 
 
 @dataclass(frozen=True)
@@ -286,3 +286,51 @@ def run_assistant_turn(
         target_level=_target_level(profile),
     )
     return render_skill_result(payload)
+
+
+def run_assistant_turn_stream(
+    *,
+    skill_key: str,
+    text: str,
+    profile: AccountProfile,
+    history: list[dict[str, Any]] | None = None,
+):
+    """Yield cumulative, display-ready text for a role-authorized assistant turn."""
+    resolved_skill_key = str(skill_key or "").strip()
+    user_text = str(text or "").strip()
+    if not user_text:
+        yield "请输入你的问题或文本。"
+        return
+
+    allowed = list_assistant_skills(profile.account_role)
+    default_key = allowed[0]["key"] if allowed else "teacher_advisor"
+    resolved_skill_key = resolved_skill_key or default_key
+    skill = _SKILL_INDEX.get(resolved_skill_key)
+    if skill is None or profile.account_role not in skill.roles:
+        raise ValueError("当前账号不能使用该功能，请刷新页面后重试。")
+
+    role_context = (
+        f"学习者当前水平：{profile.student_level_label}；学习目标：{profile.learning_goal_label}。"
+        if profile.is_student
+        else f"教师画像：{profile.teacher_role_label}；教学语种：{profile.teaching_languages_display}。"
+    )
+    enriched_text = "\n\n".join(part for part in (skill.prompt_prefix, role_context, user_text) if part)
+
+    if skill.mode == "advisor":
+        yield from generate_response_stream(
+            enriched_text,
+            history=_history_to_tuples(history),
+            hsk_level=profile.student_level_label if profile.is_student else "自动判断",
+            account_id=profile.account_id,
+        )
+        return
+
+    runtime_key = skill.runtime_key or resolved_skill_key
+    yield from execute_skill_stream(
+        runtime_key,
+        enriched_text,
+        instruction_language=profile.instruction_language,
+        instruction_languages=profile.teaching_languages_display,
+        teacher_level=profile.teacher_level if profile.is_teacher else "learner",
+        target_level=_target_level(profile),
+    )

@@ -1067,6 +1067,19 @@ def get_haipai_source_cards(query_text: str, limit: int = 3) -> list[dict[str, o
         for doc in docs
         if str(doc.get("topic", "")) and str(doc.get("topic", "")) in query
     }
+    if not exact_topics:
+        topic_signals: dict[str, int] = {}
+        for doc in docs:
+            topic = str(doc.get("topic", ""))
+            keywords = doc.get("keywords", [])
+            if isinstance(keywords, str):
+                keywords = [item.strip() for item in keywords.split(",")]
+            matched_lengths = [len(str(keyword)) for keyword in keywords if str(keyword) and str(keyword) in query]
+            if topic and matched_lengths:
+                topic_signals[topic] = max(topic_signals.get(topic, 0), max(matched_lengths))
+        if topic_signals:
+            strongest = max(topic_signals.values())
+            exact_topics = {topic for topic, signal in topic_signals.items() if signal == strongest}
     ranked = [
         int(idx)
         for idx in scores.argsort()[::-1]

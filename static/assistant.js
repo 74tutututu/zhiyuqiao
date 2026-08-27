@@ -8,6 +8,7 @@
         activeTopic: "自主探索",
         history: [],
         loading: false,
+        abortController: null,
         taskRecords: boot.taskRecords || [],
         progress: boot.progress || { completed: 0, total: 6, percent: 0 },
         artifacts: boot.artifacts || [],
@@ -169,8 +170,12 @@
         copyButton.className = "quiet-btn";
         copyButton.textContent = "复制内容";
         copyButton.addEventListener("click", async () => {
-            await navigator.clipboard.writeText(reply);
-            copyButton.textContent = "已复制";
+            try {
+                await navigator.clipboard.writeText(reply);
+                copyButton.textContent = "已复制";
+            } catch (_) {
+                copyButton.textContent = "复制失败，请手动选择";
+            }
         });
         const saveButton = document.createElement("button");
         saveButton.type = "button";
@@ -300,33 +305,71 @@
         const text = composerInput.value.trim();
         if (!text || state.loading) return;
         state.loading = true;
+        state.abortController = new AbortController();
         composerInput.value = "";
         updateCharacterCount();
-        sendBtn.disabled = true;
+        sendBtn.innerHTML = "停止生成 <span>■</span>";
+        sendBtn.setAttribute("aria-label", "停止生成回答");
+        chatMessages.setAttribute("aria-busy", "true");
         appendMessage("user", text);
         state.history.push({ role: "user", content: text });
         const loadingBubble = appendMessage("assistant", "", { loading: true });
+        let finalReply = "";
+        let finalSources = [];
 
         try {
-            const response = await fetch("/api/message", {
+            const response = await fetch("/api/message/stream", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "X-CSRF-Token": boot.csrfToken || "" },
                 body: JSON.stringify({ skill_key: state.selectedSkill, text, history: state.history }),
+                signal: state.abortController.signal,
             });
-            const payload = await response.json();
-            if (!response.ok) throw new Error(payload.detail || "请求失败");
-            loadingBubble.innerHTML = renderMarkdownLite(payload.reply);
-            appendSources(loadingBubble, payload.sources);
-            appendResponseActions(loadingBubble, text, payload.reply);
+            if (!response.ok) {
+                const payload = await response.json();
+                throw new Error(payload.detail || "请求失败");
+            }
+            if (!response.body) throw new Error("当前浏览器不支持流式回答");
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            while (true) {
+                const { value, done } = await reader.read();
+                buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+                const lines = buffer.split("\n");
+                buffer = done ? "" : lines.pop();
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    const event = JSON.parse(line);
+                    if (event.type === "error") throw new Error(event.detail || "请求失败");
+                    if (event.content) {
+                        finalReply = event.content;
+                        loadingBubble.innerHTML = renderMarkdownLite(finalReply);
+                    }
+                    if (event.type === "done") finalSources = event.sources || [];
+                }
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                if (done) break;
+            }
+            appendSources(loadingBubble, finalSources);
+            appendResponseActions(loadingBubble, text, finalReply);
             delete loadingBubble.dataset.loading;
             loadingBubble.removeAttribute("role");
-            state.history.push({ role: "assistant", content: payload.reply });
+            state.history.push({ role: "assistant", content: finalReply });
         } catch (error) {
-            loadingBubble.innerHTML = `<p>暂时无法完成：${escapeHtml(error.message || "系统不可用")}。请稍后重试。</p>`;
+            if (error.name === "AbortError") {
+                const stopped = finalReply ? `${finalReply}\n\n---\n已停止生成。` : "已停止生成，你可以调整问题后重试。";
+                loadingBubble.innerHTML = renderMarkdownLite(stopped);
+                if (finalReply) appendResponseActions(loadingBubble, text, finalReply);
+            } else {
+                loadingBubble.innerHTML = `<p>暂时无法完成：${escapeHtml(error.message || "系统不可用")}。请稍后重试。</p>`;
+            }
             delete loadingBubble.dataset.loading;
         } finally {
             state.loading = false;
-            sendBtn.disabled = false;
+            state.abortController = null;
+            sendBtn.innerHTML = "发送 <span>↗</span>";
+            sendBtn.setAttribute("aria-label", "发送消息");
+            chatMessages.removeAttribute("aria-busy");
             composerInput.focus();
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
@@ -341,7 +384,10 @@
 
     skillList?.addEventListener("click", (event) => {
         const button = event.target.closest(".skill-item");
-        if (button) setSkill(button.dataset.skillKey);
+        if (button) {
+            setSkill(button.dataset.skillKey);
+            state.activeTopic = button.dataset.skillLabel || "自主探索";
+        }
     });
     document.addEventListener("click", (event) => {
         const trigger = event.target.closest("[data-skill-target]");
@@ -387,11 +433,17 @@
             submitButton.textContent = error.message || "保存失败，请重试";
         }
     });
-    sendBtn?.addEventListener("click", sendMessage);
+    sendBtn?.addEventListener("click", () => {
+        if (state.loading) state.abortController?.abort();
+        else sendMessage();
+    });
     clearBtn?.addEventListener("click", clearChat);
     composerInput?.addEventListener("input", updateCharacterCount);
     composerInput?.addEventListener("keydown", (event) => {
-        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); sendMessage(); }
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+            event.preventDefault();
+            if (!state.loading) sendMessage();
+        }
     });
 
     setSkill(state.selectedSkill);

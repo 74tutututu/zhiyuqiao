@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 
 from core.assistant_service import _target_level, list_assistant_skills
 from core.account_profiles import AccountProfile
+import main as main_module
 from main import app
 
 
@@ -87,6 +88,22 @@ if __name__ == "__main__":
         assert teacher_page.status_code == 303
         assert teacher_page.headers["location"] == "/student"
 
+        language_update = client.post(
+            "/settings",
+            data={
+                "csrf_token": csrf,
+                "display_name": "角色测试学习者",
+                "account_role": "student",
+                "student_level": "hsk3",
+                "learning_goal": "culture_explorer",
+                "theme_name": "china_red",
+                "teaching_languages": ["中文", "English"],
+                "primary_language": "English",
+            },
+        )
+        assert language_update.status_code == 200
+        assert client.get("/api/me").json()["user"]["instruction_language"] == "English"
+
         denied = client.post(
             "/api/message",
             headers={"X-CSRF-Token": csrf},
@@ -99,6 +116,25 @@ if __name__ == "__main__":
             json={"skill_key": "culture_explorer", "text": "测试", "history": []},
         )
         assert missing_csrf.status_code == 403
+
+        original_stream = main_module.run_assistant_turn_stream
+        try:
+            def fake_stream(**_):
+                yield "第一段"
+                yield "第一段，第二段。"
+
+            main_module.run_assistant_turn_stream = fake_stream
+            streamed = client.post(
+                "/api/message/stream",
+                headers={"X-CSRF-Token": csrf},
+                json={"skill_key": "student_tutor", "text": "测试流式回答", "history": []},
+            )
+            assert streamed.status_code == 200
+            assert streamed.headers["content-type"].startswith("application/x-ndjson")
+            assert '"type": "done"' in streamed.text
+            assert "第一段，第二段。" in streamed.text
+        finally:
+            main_module.run_assistant_turn_stream = original_stream
 
         privacy = client.get("/privacy")
         assert privacy.status_code == 200

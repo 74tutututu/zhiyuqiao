@@ -131,4 +131,17 @@ if __name__ == "__main__":
         )
         assert denied_task.status_code == 403
 
+        deleted = teacher_client.post(
+            "/account/delete",
+            data={
+                "csrf_token": teacher_csrf,
+                "current_password": "Secure123",
+                "confirmation": "workflow_teacher",
+            },
+            follow_redirects=False,
+        )
+        assert deleted.status_code == 303
+        assert deleted.headers["location"] == "/register"
+        assert teacher_client.get("/api/me").status_code == 401
+
     print("[OK] learning workflow regressions passed")
