@@ -135,6 +135,16 @@ DOMAIN_KEYWORDS = {
             "直播教学", "互动模板",
         ],
     },
+    "haipai": {
+        "primary": [
+            "海派文化", "外滩", "陆家嘴", "杨浦滨江", "建筑可阅读",
+            "上海地铁", "上海话", "沪语", "侬好", "茶与咖啡",
+        ],
+        "secondary": [
+            "上海文化", "城市更新", "工业遗产", "黄浦江", "北外滩",
+            "咖啡文化", "茶馆", "文明乘车", "城市观察", "上海故事",
+        ],
+    },
 }
 
 
@@ -260,6 +270,12 @@ class KnowledgeBase:
         for fp in sw_dir.glob("*.jsonl"):
             self.software_docs.extend(self._load_jsonl(fp))
 
+        self.haipai_docs = []
+        haipai_dir = DATABASE_DIR / "haipai_culture"
+        if haipai_dir.exists():
+            for fp in haipai_dir.glob("*.jsonl"):
+                self.haipai_docs.extend(self._load_jsonl(fp))
+
     # ── TF-IDF 索引 ──────────────────────────────────────────────
     def _build_tfidf_indices(self):
         self.tfidf_indices = {}
@@ -269,6 +285,7 @@ class KnowledgeBase:
             "references": self.references,
             "softwares": self.software_docs,
             "strategies": self.strategies,
+            "haipai": self.haipai_docs,
         }
         for name, docs in domain_data.items():
             if not docs:
@@ -991,6 +1008,8 @@ def get_relevant_info(query_text, hsk_level="不限"):
                 result = _search_mucgec(_kb, query_text)
             elif domain == "softwares":
                 result = _search_softwares(_kb, query_text)
+            elif domain == "haipai":
+                result = _search_tfidf(_kb, "haipai", query_text)
             else:
                 # 对于 teacher 和 references，优先向量搜索
                 result = _search_vector(domain, query_text)
@@ -1015,6 +1034,7 @@ def get_relevant_info(query_text, hsk_level="不限"):
     exact_fallback.append(_search_exact_records(_kb.references, query_text, field_names=("title", "content", "chapter"), max_results=2))
     exact_fallback.append(_search_exact_records(_kb.software_docs, query_text, field_names=("tool_name", "title", "content"), max_results=2))
     exact_fallback.append(_search_exact_records(_kb.strategies, query_text, field_names=("title", "content"), max_results=2))
+    exact_fallback.append(_search_exact_records(_kb.haipai_docs, query_text, field_names=("topic", "title", "content", "keywords"), max_results=3))
 
     exact_fallback = [item for item in exact_fallback if item]
     if exact_fallback:
@@ -1025,6 +1045,55 @@ def get_relevant_info(query_text, hsk_level="不限"):
         return combined
 
     return "未在知识库中找到直接相关内容，请根据专业知识回答。"
+
+
+def get_haipai_source_cards(query_text: str, limit: int = 3) -> list[dict[str, object]]:
+    """Return the same traceable culture records used by retrieval as UI source cards."""
+    query = str(query_text or "").strip()
+    if not query:
+        return []
+    try:
+        _kb.initialize()
+    except Exception as exc:
+        logger.warning("海派文化来源加载失败: %s", exc)
+        return []
+    index = _kb.tfidf_indices.get("haipai")
+    if not index:
+        return []
+    vectorizer, matrix, docs = index
+    scores = cosine_similarity(vectorizer.transform([query]), matrix).flatten()
+    exact_topics = {
+        str(doc.get("topic", ""))
+        for doc in docs
+        if str(doc.get("topic", "")) and str(doc.get("topic", "")) in query
+    }
+    ranked = [
+        int(idx)
+        for idx in scores.argsort()[::-1]
+        if not exact_topics or str(docs[int(idx)].get("topic", "")) in exact_topics
+    ]
+    cards: list[dict[str, object]] = []
+    for idx in ranked:
+        if len(cards) >= max(1, min(int(limit), 5)):
+            break
+        if scores[idx] < TFIDF_MIN_SCORE:
+            continue
+        doc = docs[idx]
+        cards.append(
+            {
+                "id": doc.get("id", ""),
+                "topic": doc.get("topic", ""),
+                "title": doc.get("title", ""),
+                "source": doc.get("source", ""),
+                "source_org": doc.get("source_org", ""),
+                "source_url": doc.get("source_url", ""),
+                "published_date": doc.get("published_date", ""),
+                "verified_date": doc.get("verified_date", ""),
+                "fact_status": doc.get("fact_status", ""),
+                "dynamic": bool(doc.get("dynamic", False)),
+            }
+        )
+    return cards
 
 
 def get_relevant_info_by_domains(query_text, domains, hsk_level="不限"):
@@ -1058,6 +1127,8 @@ def get_relevant_info_by_domains(query_text, domains, hsk_level="不限"):
                 result = _search_mucgec(_kb, query_text)
             elif domain == "softwares":
                 result = _search_softwares(_kb, query_text)
+            elif domain == "haipai":
+                result = _search_tfidf(_kb, "haipai", query_text)
             else:
                 result = _search_tfidf(_kb, domain, query_text)
 

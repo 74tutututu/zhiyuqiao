@@ -34,6 +34,7 @@ from core.account_profiles import (
 )
 from core.assistant_service import list_assistant_skills, run_assistant_turn
 from core.content_catalog import get_knowledge_stats
+from core.retriever import get_haipai_source_cards
 from core.web_security import (
     CSRF_COOKIE_NAME,
     SlidingWindowLimiter,
@@ -504,10 +505,12 @@ async def api_message(request: Request, payload: AssistantMessageRequest):
     except Exception as exc:
         raise HTTPException(status_code=500, detail="系统暂时不可用，请稍后重试。") from exc
 
+    sources = get_haipai_source_cards(payload.text) if payload.skill_key in {"culture_explorer", "haipai_lesson_lab", "bridge_lesson_design"} else []
     return JSONResponse(
         {
             "reply": reply,
             "skill_key": payload.skill_key,
+            "sources": sources,
         }
     )
 

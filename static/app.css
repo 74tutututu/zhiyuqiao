@@ -243,6 +243,13 @@ body[data-theme="academy_blue"] .message.assistant .message-bubble { background:
 .assistant-rendered hr { margin: 17px 0; border: 0; border-top: 1px solid var(--line); }
 .assistant-rendered .table-scroll { max-width: 100%; margin: 13px 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .assistant-rendered table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 13px; }.assistant-rendered th, .assistant-rendered td { padding: 10px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }.assistant-rendered th { background: var(--accent-soft); }.assistant-rendered tr:last-child td { border-bottom: 0; }.assistant-rendered th:last-child, .assistant-rendered td:last-child { border-right: 0; }
+.answer-sources { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.answer-sources h4 { margin: 0 0 10px; font-family: var(--serif); font-size: 15px; }
+.source-card-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.source-card { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); transition: .18s; }
+.source-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.source-card > span { color: var(--accent); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
+.source-card strong { font-size: 12px; line-height: 1.5; }.source-card small { color: var(--muted); font-size: 9px; }.source-card em { color: var(--muted); font-size: 9px; font-style: normal; }
 
 /* Student sidebar */
 .student-sidebar { background: #e4ece9; }

@@ -95,6 +95,33 @@
         chatMessages.innerHTML = `<div class="chat-empty"><div><strong>${copy[0]}</strong><span>${copy[1]}</span></div></div>`;
     }
 
+    function appendSources(container, sources) {
+        if (!container || !Array.isArray(sources) || !sources.length) return;
+        const section = document.createElement("section");
+        section.className = "answer-sources";
+        section.setAttribute("aria-label", "回答依据");
+        const heading = document.createElement("h4");
+        heading.textContent = "回答依据";
+        section.appendChild(heading);
+        const list = document.createElement("div");
+        list.className = "source-card-list";
+        sources.forEach((source) => {
+            const card = document.createElement("a");
+            card.className = "source-card";
+            card.href = source.source_url || "#";
+            if (source.source_url) {
+                card.target = "_blank";
+                card.rel = "noopener noreferrer";
+            }
+            const meta = [source.source_org, source.published_date].filter(Boolean).join(" · ");
+            const status = source.dynamic ? "动态信息 · 使用前复核" : "公开资料 · 已核验";
+            card.innerHTML = `<span>${escapeHtml(source.topic || "海派文化")}</span><strong>${escapeHtml(source.title || source.source || "来源资料")}</strong><small>${escapeHtml(meta)}</small><em>${escapeHtml(status)} ↗</em>`;
+            list.appendChild(card);
+        });
+        section.appendChild(list);
+        container.appendChild(section);
+    }
+
     function renderStarterPrompts(skill) {
         if (!starterPrompts) return;
         starterPrompts.innerHTML = "";
@@ -118,7 +145,11 @@
         state.selectedSkill = skill.key;
         currentSkillTitle.textContent = skill.label;
         currentSkillDescription.textContent = skill.description;
-        document.querySelectorAll(".skill-item").forEach((button) => button.classList.toggle("active", button.dataset.skillKey === skill.key));
+        document.querySelectorAll(".skill-item").forEach((button) => {
+            const active = button.dataset.skillKey === skill.key;
+            button.classList.toggle("active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
         renderStarterPrompts(skill);
     }
 
@@ -140,6 +171,7 @@
         }
         if (options.loading) {
             bubble.dataset.loading = "true";
+            bubble.setAttribute("role", "status");
             bubble.innerHTML = "<p>正在组织答案，请稍等……</p>";
         }
         wrapper.appendChild(bubble);
@@ -168,7 +200,9 @@
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.detail || "请求失败");
             loadingBubble.innerHTML = renderMarkdownLite(payload.reply);
+            appendSources(loadingBubble, payload.sources);
             delete loadingBubble.dataset.loading;
+            loadingBubble.removeAttribute("role");
             state.history.push({ role: "assistant", content: payload.reply });
         } catch (error) {
             loadingBubble.innerHTML = `<p>暂时无法完成：${escapeHtml(error.message || "系统不可用")}。请稍后重试。</p>`;

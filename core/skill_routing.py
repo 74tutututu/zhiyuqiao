@@ -24,7 +24,7 @@ SKILL_INTENT_CANDIDATES = (
             "请给我一份45分钟教学流程",
             "课堂活动怎么安排",
         ),
-        domains=("strategies", "references", "teacher"),
+        domains=("haipai", "strategies", "references", "teacher"),
     ),
     IntentCandidate(
         key="hsk_prep",
