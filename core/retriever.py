@@ -13,7 +13,6 @@ import random
 import re
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -22,9 +21,8 @@ logger = logging.getLogger(__name__)
 
 # Try to import vector retriever
 get_vector_retriever = None
-VectorDB = None
 try:
-    from .vector_retriever import get_vector_retriever, VectorDB
+    from .vector_retriever import get_vector_retriever
     VECTOR_DB_AVAILABLE = True
     logger.info("Vector database support enabled")
 except ImportError:
@@ -608,7 +606,7 @@ def _search_vector(domain, query, top_k=TFIDF_TOP_K):
         return formatted if formatted else None
 
     except ImportError:
-        logger.warning(f"Vector DB import failed, falling back to TF-IDF")
+        logger.warning("Vector DB import failed, falling back to TF-IDF")
         return None
     except Exception as e:
         logger.warning(f"Vector search failed for {domain}: {e}", exc_info=True)

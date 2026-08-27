@@ -28,7 +28,7 @@
 
         <form method="post" class="stack-form" data-profile-form>
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="username" value="{{ user.username }}" autocomplete="username">
+            <input class="sr-only" type="text" name="username" value="{{ user.username }}" autocomplete="username" tabindex="-1" aria-hidden="true" readonly>
             <div class="form-grid">
                 <label class="field"><span>登录账号</span><input type="text" value="{{ user.username }}" disabled></label>
                 <label class="field"><span>显示名称</span><input type="text" name="display_name" value="{{ user.display_name }}" autocomplete="name" required></label>
@@ -68,7 +68,7 @@
         <div class="section-heading"><p class="kicker">DATA CONTROL</p><h2 id="delete-account-title">注销账号与删除数据</h2><p>此操作会永久删除账号、学习任务、反思记录、教案草稿和登录会话，无法撤销。</p></div>
         <form class="stack-form" method="post" action="/account/delete" onsubmit="return window.confirm('确认永久删除账号及全部个人档案吗？此操作无法撤销。')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="username" value="{{ user.username }}" autocomplete="username">
+            <input class="sr-only" type="text" name="username" value="{{ user.username }}" autocomplete="username" tabindex="-1" aria-hidden="true" readonly>
             <div class="form-grid">
                 <label class="field"><span>当前密码</span><input type="password" name="current_password" autocomplete="current-password" required></label>
                 <label class="field"><span>输入登录账号 {{ user.username }} 以确认</span><input name="confirmation" autocomplete="off" required></label>

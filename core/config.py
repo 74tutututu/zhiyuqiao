@@ -6,7 +6,6 @@ Centralizes all configurable parameters to make tuning easier.
 
 import os
 from pathlib import Path
-from typing import Optional
 
 # ── 项目路径配置 ──────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

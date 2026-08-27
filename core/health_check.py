@@ -49,7 +49,7 @@ def check_vector_db_status() -> Dict[str, Any]:
 def check_retriever_status() -> Dict[str, Any]:
     """Check if knowledge base retriever is operational."""
     try:
-        from .retriever import get_relevant_info, KnowledgeBase, _kb
+        from .retriever import get_relevant_info, _kb
 
         # Test retriever initialization
         _kb.initialize()

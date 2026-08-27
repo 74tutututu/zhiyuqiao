@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 import json
-import os
 from pathlib import Path
 from typing import Any, Literal
 
@@ -11,6 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Red
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+from sqlalchemy import text as sql_text
 from starlette.concurrency import run_in_threadpool
 
 from core.account_profiles import (
@@ -44,6 +44,7 @@ from core.account_profiles import (
 )
 from core.assistant_service import list_assistant_skills, run_assistant_turn, run_assistant_turn_stream
 from core.content_catalog import get_knowledge_stats
+from core.db import get_db_session
 from core.retriever import get_haipai_source_cards
 from core.web_security import (
     CSRF_COOKIE_NAME,
@@ -781,3 +782,16 @@ async def teacher_artifact_download(request: Request, artifact_id: str):
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "zhiyuqiao"}
+
+
+@app.get("/health/ready")
+async def readiness():
+    try:
+        with get_db_session() as session:
+            session.execute(sql_text("SELECT 1"))
+        stats = get_knowledge_stats()
+        if int(stats.get("total", 0)) <= 0:
+            raise RuntimeError("knowledge catalog is empty")
+    except Exception:
+        return JSONResponse({"status": "not_ready", "service": "zhiyuqiao"}, status_code=503)
+    return {"status": "ready", "service": "zhiyuqiao", "knowledge_records": stats["total"]}

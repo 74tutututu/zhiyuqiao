@@ -22,4 +22,7 @@ if __name__ == "__main__":
         response = client.get("/health")
         response.raise_for_status()
         assert response.json() == {"status": "ok", "service": "zhiyuqiao"}
+        ready = client.get("/health/ready")
+        ready.raise_for_status()
+        assert ready.json()["status"] == "ready"
     print("[OK] FastAPI minimal launch test passed")

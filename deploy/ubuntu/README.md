@@ -31,7 +31,7 @@ sudo apt-get install -y python3 python3-venv python3-pip nginx
 
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-web.txt
 ```
 
 ## 3. 配置 `.env`
@@ -48,14 +48,23 @@ cp deploy/ubuntu/server.env.example .env
 
 推荐部署参数：
 
-- `GRADIO_SERVER_NAME=127.0.0.1`
-- `GRADIO_SERVER_PORT=7860`
+- `APP_SERVER_NAME=127.0.0.1`
+- `APP_SERVER_PORT=7860`
 
 这样应用只监听本机，由 Nginx 对外提供访问入口。
 
 如果你使用 PostgreSQL，记得同时在 `.env` 中补上：
 
 - `DATABASE_URL=postgresql+psycopg://用户名:密码@127.0.0.1:5432/数据库名`
+
+保护配置文件，并确认它没有进入 Git：
+
+```bash
+chmod 600 .env
+git status --short
+```
+
+若当前只用公网 IP + HTTP 做短期验收，`ZHIYUQIAO_SECURE_COOKIES=0`；域名 HTTPS 生效后必须改为 `1`。HTTP 阶段不要录入真实学习者、访谈或教学数据。
 
 ## 4. 配置 `systemd`
 
@@ -74,6 +83,12 @@ sudo cp /tmp/zhiyuqiao.service /etc/systemd/system/zhiyuqiao.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now zhiyuqiao
 sudo systemctl status zhiyuqiao -l
+```
+
+确认应用和数据库、知识目录都已就绪：
+
+```bash
+curl --fail http://127.0.0.1:7860/health/ready
 ```
 
 查看日志：
@@ -104,6 +119,8 @@ http://你的公网IP/
 
 - `80/tcp`
 
+SSH 的 `22/tcp` 只建议向维护者固定公网 IP 开放，不要向所有地址长期开放。
+
 ## 6. 以后切换到域名
 
 把域名解析到服务器公网 IP 后：
@@ -123,6 +140,8 @@ sudo apt-get install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d your-domain.com
 ```
 
+证书生效后，把 `.env` 中 `ZHIYUQIAO_SECURE_COOKIES` 改为 `1` 并重启服务。安全组再放行 `443/tcp`，确认 HTTPS 正常后可让 80 端口只负责跳转。
+
 完成后访问：
 
 ```text
@@ -133,8 +152,28 @@ https://your-domain.com/
 
 ```bash
 cd /home/admin/zhiyuqiao
+
+# 更新前备份。SQLite 默认路径如下；PostgreSQL 请改用 pg_dump。
+mkdir -p backups
+if [ -f database/zhiyuqiao_dev.sqlite3 ]; then cp database/zhiyuqiao_dev.sqlite3 "backups/zhiyuqiao-$(date +%Y%m%d-%H%M%S).sqlite3"; fi
+
+git fetch origin
+git pull --ff-only origin main
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-web.txt
 sudo systemctl restart zhiyuqiao
 sudo journalctl -u zhiyuqiao -n 50 --no-pager
+curl --fail http://127.0.0.1:7860/health/ready
 ```
+
+如果健康检查失败，先查看日志，不要反复覆盖数据库。确认需要回滚代码时，切回更新前记录的提交，重新安装 `requirements-web.txt` 并重启；数据恢复则只使用刚才生成的备份副本。
+
+## 8. 上线验收清单
+
+- `/health/ready` 返回 `status: ready`
+- 学生和教师分别登录后只进入自己的工作台
+- 学生流式回答、停止生成、保存任务、完成反思与进度更新正常
+- 教师保存教案、编辑、标记已审核、下载 Markdown、打印 PDF 正常
+- 海派文化回答显示与主题一致的官方来源卡片
+- HTTPS 下登录、退出、账号设置和注销流程正常
+- `.env`、数据库、原始调研材料不在公开仓库中

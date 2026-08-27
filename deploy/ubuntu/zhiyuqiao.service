@@ -11,6 +11,11 @@ Environment=PYTHONUNBUFFERED=1
 ExecStart=__APP_DIR__/.venv/bin/python __APP_DIR__/app.py
 Restart=always
 RestartSec=3
+TimeoutStopSec=30
+KillSignal=SIGINT
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target

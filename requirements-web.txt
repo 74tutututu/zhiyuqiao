@@ -1,0 +1,14 @@
+# Production web runtime. Vector-index building and research tooling remain in requirements.txt.
+fastapi==0.135.1
+Jinja2==3.1.6
+numpy==2.2.3
+openai==2.26.0
+pandas==3.0.1
+psycopg[binary]>=3.2.3
+pydantic==2.12.5
+pypinyin==0.54.0
+python-dotenv==1.2.2
+python-multipart==0.0.22
+scikit-learn>=1.4.0
+SQLAlchemy>=2.0.36
+uvicorn==0.41.0

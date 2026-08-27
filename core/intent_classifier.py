@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from typing import Iterable, Sequence
+from typing import Sequence
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
