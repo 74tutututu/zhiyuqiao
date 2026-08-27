@@ -1,7 +1,10 @@
 (function () {
+    const boot = window.__ZHIYUQIAO__ || {};
+    const skills = boot.skills || [];
+    const role = boot.role || "teacher";
     const state = {
-        skills: (window.__ZHIYUQIAO__ && window.__ZHIYUQIAO__.skills) || [],
-        selectedSkill: ((window.__ZHIYUQIAO__ && window.__ZHIYUQIAO__.skills) || [])[0]?.key || "teacher_advisor",
+        skills,
+        selectedSkill: skills[0]?.key || "teacher_advisor",
         history: [],
         loading: false,
     };
@@ -9,8 +12,10 @@
     const skillList = document.getElementById("skill-list");
     const currentSkillTitle = document.getElementById("current-skill-title");
     const currentSkillDescription = document.getElementById("current-skill-description");
+    const starterPrompts = document.getElementById("starter-prompts");
     const chatMessages = document.getElementById("chat-messages");
     const composerInput = document.getElementById("composer-input");
+    const characterCount = document.getElementById("character-count");
     const sendBtn = document.getElementById("send-btn");
     const clearBtn = document.getElementById("clear-btn");
 
@@ -24,53 +29,35 @@
     }
 
     function renderMarkdownLite(text) {
-        const lines = escapeHtml(text).replace(/\r\n/g, "\n").split("\n");
+        const lines = escapeHtml(text)
+            .replace(/\r\n/g, "\n")
+            // A few models stream compact Markdown tables with || in place of a newline.
+            .replace(/\s*\|\|\s*/g, "|\n|")
+            .split("\n");
         const html = [];
-
-        function inline(value) {
-            return value
-                .replace(/`([^`]+)`/g, "<code>$1</code>")
-                .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-        }
-
-        function isTableSeparator(value) {
-            return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(value);
-        }
-
-        function tableCells(value) {
-            return value.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
-        }
+        const inline = (value) => value
+            .replace(/`([^`]+)`/g, "<code>$1</code>")
+            .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+        const isTableSeparator = (value) => /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(value);
+        const tableCells = (value) => value.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
 
         let index = 0;
         while (index < lines.length) {
             const line = lines[index].trim();
-            if (!line) {
-                index += 1;
-                continue;
-            }
+            if (!line) { index += 1; continue; }
             if (index + 1 < lines.length && line.includes("|") && isTableSeparator(lines[index + 1])) {
                 const headers = tableCells(line);
                 index += 2;
                 const rows = [];
                 while (index < lines.length && lines[index].includes("|") && lines[index].trim()) {
-                    rows.push(tableCells(lines[index]));
-                    index += 1;
+                    rows.push(tableCells(lines[index])); index += 1;
                 }
                 html.push(`<div class="table-scroll"><table><thead><tr>${headers.map((cell) => `<th>${inline(cell)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((_, cellIndex) => `<td>${inline(row[cellIndex] || "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`);
                 continue;
             }
-            const heading = line.match(/^(#{1,3})\s+(.+)$/);
-            if (heading) {
-                const level = heading[1].length;
-                html.push(`<h${level}>${inline(heading[2])}</h${level}>`);
-                index += 1;
-                continue;
-            }
-            if (/^(-{3,}|\*{3,})$/.test(line)) {
-                html.push("<hr>");
-                index += 1;
-                continue;
-            }
+            const heading = line.match(/^(#{1,4})\s+(.+)$/);
+            if (heading) { const level = heading[1].length; html.push(`<h${level}>${inline(heading[2])}</h${level}>`); index += 1; continue; }
+            if (/^(-{3,}|\*{3,})$/.test(line)) { html.push("<hr>"); index += 1; continue; }
             const unordered = /^[-*]\s+/.test(line);
             const ordered = /^\d+[.)]\s+/.test(line);
             if (unordered || ordered) {
@@ -78,42 +65,74 @@
                 const matcher = unordered ? /^[-*]\s+/ : /^\d+[.)]\s+/;
                 const items = [];
                 while (index < lines.length && matcher.test(lines[index].trim())) {
-                    items.push(`<li>${inline(lines[index].trim().replace(matcher, ""))}</li>`);
-                    index += 1;
+                    items.push(`<li>${inline(lines[index].trim().replace(matcher, ""))}</li>`); index += 1;
                 }
-                html.push(`<${tag}>${items.join("")}</${tag}>`);
-                continue;
+                html.push(`<${tag}>${items.join("")}</${tag}>`); continue;
             }
             if (line.startsWith("&gt; ")) {
                 const quotes = [];
                 while (index < lines.length && lines[index].trim().startsWith("&gt; ")) {
-                    quotes.push(inline(lines[index].trim().slice(5)));
-                    index += 1;
+                    quotes.push(inline(lines[index].trim().slice(5))); index += 1;
                 }
-                html.push(`<blockquote>${quotes.join("<br>")}</blockquote>`);
-                continue;
+                html.push(`<blockquote>${quotes.join("<br>")}</blockquote>`); continue;
             }
             const paragraph = [];
             while (index < lines.length && lines[index].trim()) {
                 const current = lines[index].trim();
-                if (paragraph.length && (/^(#{1,3})\s+/.test(current) || /^[-*]\s+/.test(current) || /^\d+[.)]\s+/.test(current))) {
-                    break;
-                }
-                paragraph.push(inline(current));
-                index += 1;
+                if (paragraph.length && (/^(#{1,4})\s+/.test(current) || /^[-*]\s+/.test(current) || /^\d+[.)]\s+/.test(current))) break;
+                paragraph.push(inline(current)); index += 1;
             }
             html.push(`<p>${paragraph.join("<br>")}</p>`);
         }
         return html.join("");
     }
 
-    function appendMessage(role, text, options = {}) {
-        const wrapper = document.createElement("div");
-        wrapper.className = `message ${role}`;
+    function renderEmptyState() {
+        if (!chatMessages || state.history.length) return;
+        const copy = role === "student"
+            ? ["从一个问题开始", "你可以用中文或熟悉的语言提问，我会按你的水平解释。"]
+            : ["把教学情境说具体一点", "学习者水平、课堂时长、文化主题和预期产出越清楚，建议越可用。"];
+        chatMessages.innerHTML = `<div class="chat-empty"><div><strong>${copy[0]}</strong><span>${copy[1]}</span></div></div>`;
+    }
 
+    function renderStarterPrompts(skill) {
+        if (!starterPrompts) return;
+        starterPrompts.innerHTML = "";
+        (skill?.starter_prompts || []).forEach((prompt) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "starter-prompt";
+            button.textContent = prompt;
+            button.addEventListener("click", () => {
+                composerInput.value = prompt;
+                updateCharacterCount();
+                composerInput.focus();
+            });
+            starterPrompts.appendChild(button);
+        });
+    }
+
+    function setSkill(skillKey) {
+        const skill = state.skills.find((item) => item.key === skillKey);
+        if (!skill) return;
+        state.selectedSkill = skill.key;
+        currentSkillTitle.textContent = skill.label;
+        currentSkillDescription.textContent = skill.description;
+        document.querySelectorAll(".skill-item").forEach((button) => button.classList.toggle("active", button.dataset.skillKey === skill.key));
+        renderStarterPrompts(skill);
+    }
+
+    function updateCharacterCount() {
+        if (characterCount && composerInput) characterCount.textContent = `${composerInput.value.length} / 6000`;
+    }
+
+    function appendMessage(messageRole, text, options = {}) {
+        chatMessages.querySelector(".chat-empty")?.remove();
+        const wrapper = document.createElement("div");
+        wrapper.className = `message ${messageRole}`;
         const bubble = document.createElement("div");
         bubble.className = "message-bubble";
-        if (role === "assistant") {
+        if (messageRole === "assistant") {
             bubble.classList.add("assistant-rendered");
             bubble.innerHTML = renderMarkdownLite(text);
         } else {
@@ -121,38 +140,21 @@
         }
         if (options.loading) {
             bubble.dataset.loading = "true";
-            bubble.textContent = "正在思考，请稍等...";
+            bubble.innerHTML = "<p>正在组织答案，请稍等……</p>";
         }
-
         wrapper.appendChild(bubble);
         chatMessages.appendChild(wrapper);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         return bubble;
     }
 
-    function setSkill(skillKey) {
-        state.selectedSkill = skillKey;
-        const skill = state.skills.find((item) => item.key === skillKey);
-        if (!skill) {
-            return;
-        }
-        currentSkillTitle.textContent = skill.label;
-        currentSkillDescription.textContent = skill.description;
-        document.querySelectorAll(".skill-item").forEach((button) => {
-            button.classList.toggle("active", button.dataset.skillKey === skillKey);
-        });
-    }
-
     async function sendMessage() {
         const text = composerInput.value.trim();
-        if (!text || state.loading) {
-            return;
-        }
-
+        if (!text || state.loading) return;
         state.loading = true;
         composerInput.value = "";
+        updateCharacterCount();
         sendBtn.disabled = true;
-
         appendMessage("user", text);
         state.history.push({ role: "user", content: text });
         const loadingBubble = appendMessage("assistant", "", { loading: true });
@@ -161,23 +163,15 @@
             const response = await fetch("/api/message", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    skill_key: state.selectedSkill,
-                    text,
-                    history: state.history,
-                }),
+                body: JSON.stringify({ skill_key: state.selectedSkill, text, history: state.history }),
             });
-
             const payload = await response.json();
-            if (!response.ok) {
-                throw new Error(payload.detail || "请求失败");
-            }
-
+            if (!response.ok) throw new Error(payload.detail || "请求失败");
             loadingBubble.innerHTML = renderMarkdownLite(payload.reply);
             delete loadingBubble.dataset.loading;
             state.history.push({ role: "assistant", content: payload.reply });
         } catch (error) {
-            loadingBubble.innerHTML = `<p>⚠️ ${escapeHtml(error.message || "系统暂时不可用")}</p>`;
+            loadingBubble.innerHTML = `<p>暂时无法完成：${escapeHtml(error.message || "系统不可用")}。请稍后重试。</p>`;
             delete loadingBubble.dataset.loading;
         } finally {
             state.loading = false;
@@ -187,34 +181,34 @@
         }
     }
 
-    if (skillList) {
-        skillList.addEventListener("click", function (event) {
-            const button = event.target.closest(".skill-item");
-            if (!button) {
-                return;
-            }
-            setSkill(button.dataset.skillKey);
-        });
+    function clearChat() {
+        state.history = [];
+        chatMessages.innerHTML = "";
+        renderEmptyState();
+        composerInput.focus();
     }
 
-    if (sendBtn) {
-        sendBtn.addEventListener("click", sendMessage);
-    }
+    skillList?.addEventListener("click", (event) => {
+        const button = event.target.closest(".skill-item");
+        if (button) setSkill(button.dataset.skillKey);
+    });
+    document.addEventListener("click", (event) => {
+        const trigger = event.target.closest("[data-skill-target]");
+        if (!trigger) return;
+        setSkill(trigger.dataset.skillTarget);
+        composerInput.value = trigger.dataset.prompt || "";
+        updateCharacterCount();
+        document.querySelector(".assistant-workbench")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.setTimeout(() => composerInput.focus(), 350);
+    });
+    sendBtn?.addEventListener("click", sendMessage);
+    clearBtn?.addEventListener("click", clearChat);
+    composerInput?.addEventListener("input", updateCharacterCount);
+    composerInput?.addEventListener("keydown", (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); sendMessage(); }
+    });
 
-    if (clearBtn) {
-        clearBtn.addEventListener("click", function () {
-            state.history = [];
-            chatMessages.innerHTML = "";
-            composerInput.focus();
-        });
-    }
-
-    if (composerInput) {
-        composerInput.addEventListener("keydown", function (event) {
-            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-                event.preventDefault();
-                sendMessage();
-            }
-        });
-    }
+    setSkill(state.selectedSkill);
+    updateCharacterCount();
+    renderEmptyState();
 })();

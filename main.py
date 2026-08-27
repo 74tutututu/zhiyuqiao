@@ -12,10 +12,13 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from core.account_profiles import (
+    ACCOUNT_ROLE_LABELS,
     DEFAULT_THEME,
     LANGUAGE_OPTIONS,
+    LEARNING_GOAL_LABELS,
     SESSION_COOKIE_NAME,
     SESSION_TTL_DAYS,
+    STUDENT_LEVEL_LABELS,
     TEACHER_LEVEL_LABELS,
     THEME_LABELS,
     authenticate_teacher,
@@ -24,8 +27,8 @@ from core.account_profiles import (
     delete_user_session,
     get_teacher_profile_by_session,
     initialize_profile_store,
-    register_teacher_account,
-    update_teacher_profile,
+    register_account,
+    update_account_profile,
 )
 from core.assistant_service import list_assistant_skills, run_assistant_turn
 
@@ -59,6 +62,18 @@ def _teacher_level_choices() -> list[tuple[str, str]]:
     return [(value, key) for key, value in TEACHER_LEVEL_LABELS.items()]
 
 
+def _role_choices() -> list[tuple[str, str]]:
+    return [(value, key) for key, value in ACCOUNT_ROLE_LABELS.items()]
+
+
+def _student_level_choices() -> list[tuple[str, str]]:
+    return [(value, key) for key, value in STUDENT_LEVEL_LABELS.items()]
+
+
+def _learning_goal_choices() -> list[tuple[str, str]]:
+    return [(value, key) for key, value in LEARNING_GOAL_LABELS.items()]
+
+
 def _normalize_form_languages(raw: list[str] | None) -> list[str]:
     cleaned = [str(item).strip() for item in raw or [] if str(item).strip()]
     return cleaned or ["中文"]
@@ -73,7 +88,10 @@ def _page_context(request: Request, **kwargs: Any) -> dict[str, Any]:
     context = {
         "request": request,
         "language_options": LANGUAGE_OPTIONS,
+        "role_choices": _role_choices(),
         "teacher_level_choices": _teacher_level_choices(),
+        "student_level_choices": _student_level_choices(),
+        "learning_goal_choices": _learning_goal_choices(),
         "theme_choices": _theme_choices(),
         "default_theme": DEFAULT_THEME,
         **kwargs,
@@ -95,6 +113,10 @@ def _redirect_with_session(url: str, session_id: str) -> RedirectResponse:
     return response
 
 
+def _role_home(user) -> str:
+    return "/student" if user.account_role == "student" else "/teacher"
+
+
 def _login_required(request: Request):
     user = _current_user(request)
     if user is None:
@@ -106,7 +128,7 @@ def _login_required(request: Request):
 async def home(request: Request):
     user = _current_user(request)
     if user is not None:
-        return RedirectResponse(url="/assistant", status_code=303)
+        return RedirectResponse(url=_role_home(user), status_code=303)
     if count_users() == 0:
         return RedirectResponse(url="/register", status_code=303)
     return RedirectResponse(url="/login", status_code=303)
@@ -114,8 +136,9 @@ async def home(request: Request):
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
-    if _current_user(request) is not None:
-        return RedirectResponse(url="/assistant", status_code=303)
+    current = _current_user(request)
+    if current is not None:
+        return RedirectResponse(url=_role_home(current), status_code=303)
 
     return templates.TemplateResponse(
         "register.html",
@@ -131,26 +154,33 @@ async def register_page(request: Request):
 
 @app.post("/register", response_class=HTMLResponse)
 async def register_submit(request: Request):
-    if _current_user(request) is not None:
-        return RedirectResponse(url="/assistant", status_code=303)
+    current = _current_user(request)
+    if current is not None:
+        return RedirectResponse(url=_role_home(current), status_code=303)
 
     form = await request.form()
     form_data = {
         "username": str(form.get("username", "")).strip(),
         "display_name": str(form.get("display_name", "")).strip(),
+        "account_role": str(form.get("account_role", "teacher")).strip(),
         "teacher_level": str(form.get("teacher_level", "")).strip(),
+        "student_level": str(form.get("student_level", "hsk3")).strip(),
+        "learning_goal": str(form.get("learning_goal", "culture_explorer")).strip(),
         "theme_name": str(form.get("theme_name", DEFAULT_THEME)).strip(),
     }
     teaching_languages = _normalize_form_languages(form.getlist("teaching_languages"))
     password = str(form.get("password", ""))
 
     try:
-        profile = register_teacher_account(
+        profile = register_account(
             username=form_data["username"],
             display_name=form_data["display_name"],
             password=password,
             teaching_languages=teaching_languages,
+            account_role=form_data["account_role"],
             teacher_level=form_data["teacher_level"],
+            student_level=form_data["student_level"],
+            learning_goal=form_data["learning_goal"],
             theme_name=form_data["theme_name"],
         )
     except ValueError as exc:
@@ -167,13 +197,14 @@ async def register_submit(request: Request):
         )
 
     session_id = create_user_session(profile.user_id)
-    return _redirect_with_session("/assistant", session_id)
+    return _redirect_with_session(_role_home(profile), session_id)
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    if _current_user(request) is not None:
-        return RedirectResponse(url="/assistant", status_code=303)
+    current = _current_user(request)
+    if current is not None:
+        return RedirectResponse(url=_role_home(current), status_code=303)
     if count_users() == 0:
         return RedirectResponse(url="/register", status_code=303)
 
@@ -208,7 +239,7 @@ async def login_submit(request: Request):
         )
 
     session_id = create_user_session(profile.user_id)
-    return _redirect_with_session("/assistant", session_id)
+    return _redirect_with_session(_role_home(profile), session_id)
 
 
 @app.post("/logout")
@@ -226,13 +257,43 @@ async def assistant_page(request: Request):
     if redirect is not None:
         return redirect
 
+    return RedirectResponse(url=_role_home(user), status_code=303)
+
+
+@app.get("/teacher", response_class=HTMLResponse)
+async def teacher_workspace(request: Request):
+    user, redirect = _login_required(request)
+    if redirect is not None:
+        return redirect
+    if user.account_role != "teacher":
+        return RedirectResponse(url="/student", status_code=303)
+
     return templates.TemplateResponse(
-        "assistant.html",
+        "teacher_dashboard.html",
         _page_context(
             request,
-            page_title="智语桥",
+            page_title="教师工作台",
             user=user.to_dict(),
-            skills=list_assistant_skills(),
+            skills=list_assistant_skills("teacher"),
+        ),
+    )
+
+
+@app.get("/student", response_class=HTMLResponse)
+async def student_workspace(request: Request):
+    user, redirect = _login_required(request)
+    if redirect is not None:
+        return redirect
+    if user.account_role != "student":
+        return RedirectResponse(url="/teacher", status_code=303)
+
+    return templates.TemplateResponse(
+        "student_dashboard.html",
+        _page_context(
+            request,
+            page_title="学习空间",
+            user=user.to_dict(),
+            skills=list_assistant_skills("student"),
         ),
     )
 
@@ -264,16 +325,22 @@ async def settings_submit(request: Request):
     form = await request.form()
     display_name = str(form.get("display_name", "")).strip()
     teacher_level = str(form.get("teacher_level", "")).strip()
+    account_role = str(form.get("account_role", user.account_role)).strip()
+    student_level = str(form.get("student_level", user.student_level)).strip()
+    learning_goal = str(form.get("learning_goal", user.learning_goal)).strip()
     theme_name = str(form.get("theme_name", DEFAULT_THEME)).strip()
     password = str(form.get("password", "")).strip()
     teaching_languages = _normalize_form_languages(form.getlist("teaching_languages"))
 
     try:
-        updated = update_teacher_profile(
+        updated = update_account_profile(
             user.user_id,
             display_name=display_name,
             teaching_languages=teaching_languages,
+            account_role=account_role,
             teacher_level=teacher_level,
+            student_level=student_level,
+            learning_goal=learning_goal,
             theme_name=theme_name,
             password=password or None,
         )
@@ -283,7 +350,10 @@ async def settings_submit(request: Request):
             {
                 "display_name": display_name or user.display_name,
                 "teaching_languages": teaching_languages,
+                "account_role": account_role or user.account_role,
                 "teacher_level": teacher_level or user.teacher_level,
+                "student_level": student_level or user.student_level,
+                "learning_goal": learning_goal or user.learning_goal,
                 "theme_name": theme_name or user.theme_name,
             }
         )
@@ -324,7 +394,7 @@ async def api_skills(request: Request):
     user = _current_user(request)
     if user is None:
         raise HTTPException(status_code=401, detail="未登录")
-    return {"skills": list_assistant_skills()}
+    return {"skills": list_assistant_skills(user.account_role)}
 
 
 @app.post("/api/message")

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Iterator
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 load_dotenv()
@@ -58,3 +58,33 @@ def get_db_session() -> Iterator[Session]:
 
 def init_database() -> None:
     Base.metadata.create_all(bind=engine)
+    _migrate_user_profile_columns()
+
+
+def _migrate_user_profile_columns() -> None:
+    """Add role-aware profile fields without discarding existing local accounts."""
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+
+    existing = {column["name"] for column in inspector.get_columns("users")}
+    statements: list[str] = []
+    if "account_role" not in existing:
+        statements.append(
+            "ALTER TABLE users ADD COLUMN account_role VARCHAR(16) NOT NULL DEFAULT 'teacher'"
+        )
+    if "student_level" not in existing:
+        statements.append(
+            "ALTER TABLE users ADD COLUMN student_level VARCHAR(24) NOT NULL DEFAULT 'hsk3'"
+        )
+    if "learning_goal" not in existing:
+        statements.append(
+            "ALTER TABLE users ADD COLUMN learning_goal VARCHAR(32) NOT NULL DEFAULT 'culture_explorer'"
+        )
+
+    if not statements:
+        return
+
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))

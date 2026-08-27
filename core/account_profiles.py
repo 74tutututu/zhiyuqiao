@@ -17,7 +17,10 @@ from .db import Base, get_db_session, init_database
 
 DEFAULT_ACCOUNT_ID = "guest"
 DEFAULT_THEME = "china_red"
+DEFAULT_ACCOUNT_ROLE = "teacher"
 DEFAULT_TEACHER_LEVEL = "experienced_teacher"
+DEFAULT_STUDENT_LEVEL = "hsk3"
+DEFAULT_LEARNING_GOAL = "culture_explorer"
 SESSION_COOKIE_NAME = "zhiyuqiao_session"
 SESSION_TTL_DAYS = int(os.getenv("ZHIYUQIAO_SESSION_TTL_DAYS", "7"))
 
@@ -25,6 +28,30 @@ TEACHER_LEVEL_LABELS = {
     "novice_teacher": "新手教师",
     "experienced_teacher": "成熟教师",
     "researcher": "教研人员",
+}
+
+ACCOUNT_ROLE_LABELS = {
+    "student": "中文学习者",
+    "teacher": "中文教师",
+}
+
+STUDENT_LEVEL_LABELS = {
+    "starter": "刚开始学中文",
+    "hsk1": "HSK 1",
+    "hsk2": "HSK 2",
+    "hsk3": "HSK 3",
+    "hsk4": "HSK 4",
+    "hsk5": "HSK 5",
+    "hsk6": "HSK 6",
+    "advanced": "高级学习者",
+}
+
+LEARNING_GOAL_LABELS = {
+    "culture_explorer": "在上海学文化",
+    "daily_chinese": "日常中文交流",
+    "hsk_exam": "HSK 备考",
+    "speaking": "提升口语表达",
+    "writing": "提升中文写作",
 }
 
 THEME_LABELS = {
@@ -53,7 +80,10 @@ class UserRecord(Base):
     password_hash: Mapped[str] = mapped_column(String(256))
     password_salt: Mapped[str] = mapped_column(String(128))
     teaching_languages: Mapped[list[str]] = mapped_column(JSON, default=lambda: ["中文"])
+    account_role: Mapped[str] = mapped_column(String(16), default=DEFAULT_ACCOUNT_ROLE)
     teacher_level: Mapped[str] = mapped_column(String(32), default=DEFAULT_TEACHER_LEVEL)
+    student_level: Mapped[str] = mapped_column(String(24), default=DEFAULT_STUDENT_LEVEL)
+    learning_goal: Mapped[str] = mapped_column(String(32), default=DEFAULT_LEARNING_GOAL)
     theme_name: Mapped[str] = mapped_column(String(32), default=DEFAULT_THEME)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
@@ -81,12 +111,15 @@ class SessionRecord(Base):
 
 
 @dataclass(frozen=True)
-class TeacherProfile:
+class AccountProfile:
     user_id: str
     username: str
     display_name: str
     teaching_languages: tuple[str, ...]
+    account_role: str
     teacher_level: str
+    student_level: str
+    learning_goal: str
     theme_name: str
     region: str = ""
     school_stage: str = ""
@@ -114,10 +147,42 @@ class TeacherProfile:
         return TEACHER_LEVEL_LABELS.get(self.teacher_level, self.teacher_level)
 
     @property
+    def role_label(self) -> str:
+        return ACCOUNT_ROLE_LABELS.get(self.account_role, self.account_role)
+
+    @property
+    def is_student(self) -> bool:
+        return self.account_role == "student"
+
+    @property
+    def is_teacher(self) -> bool:
+        return self.account_role == "teacher"
+
+    @property
+    def student_level_label(self) -> str:
+        return STUDENT_LEVEL_LABELS.get(self.student_level, self.student_level)
+
+    @property
+    def learning_goal_label(self) -> str:
+        return LEARNING_GOAL_LABELS.get(self.learning_goal, self.learning_goal)
+
+    @property
+    def workspace_url(self) -> str:
+        return "/student" if self.is_student else "/teacher"
+
+    @property
+    def profile_level_label(self) -> str:
+        return self.student_level_label if self.is_student else self.teacher_role_label
+
+    @property
+    def language_field_label(self) -> str:
+        return "讲解语言" if self.is_student else "教学语种"
+
+    @property
     def theme_label(self) -> str:
         return THEME_LABELS.get(self.theme_name, self.theme_name)
 
-    def to_dict(self) -> dict[str, str | list[str]]:
+    def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
         payload["account_id"] = self.account_id
         payload["instruction_language"] = self.instruction_language
@@ -125,8 +190,20 @@ class TeacherProfile:
         payload["teaching_languages_display"] = self.teaching_languages_display
         payload["teacher_role"] = self.teacher_role
         payload["teacher_role_label"] = self.teacher_role_label
+        payload["role_label"] = self.role_label
+        payload["is_student"] = self.is_student
+        payload["is_teacher"] = self.is_teacher
+        payload["student_level_label"] = self.student_level_label
+        payload["learning_goal_label"] = self.learning_goal_label
+        payload["workspace_url"] = self.workspace_url
+        payload["profile_level_label"] = self.profile_level_label
+        payload["language_field_label"] = self.language_field_label
         payload["theme_label"] = self.theme_label
         return payload
+
+
+# Backward-compatible name for the retrieval and skill modules.
+TeacherProfile = AccountProfile
 
 
 def _normalize_languages(languages: Iterable[str] | str | None) -> tuple[str, ...]:
@@ -158,6 +235,21 @@ def _validate_teacher_level(teacher_level: str) -> str:
     return cleaned
 
 
+def _validate_account_role(account_role: str) -> str:
+    cleaned = str(account_role or "").strip() or DEFAULT_ACCOUNT_ROLE
+    return cleaned if cleaned in ACCOUNT_ROLE_LABELS else DEFAULT_ACCOUNT_ROLE
+
+
+def _validate_student_level(student_level: str) -> str:
+    cleaned = str(student_level or "").strip() or DEFAULT_STUDENT_LEVEL
+    return cleaned if cleaned in STUDENT_LEVEL_LABELS else DEFAULT_STUDENT_LEVEL
+
+
+def _validate_learning_goal(learning_goal: str) -> str:
+    cleaned = str(learning_goal or "").strip() or DEFAULT_LEARNING_GOAL
+    return cleaned if cleaned in LEARNING_GOAL_LABELS else DEFAULT_LEARNING_GOAL
+
+
 def _validate_theme_name(theme_name: str) -> str:
     cleaned = str(theme_name or "").strip() or DEFAULT_THEME
     if cleaned not in THEME_LABELS:
@@ -182,29 +274,35 @@ def _verify_password(password: str, password_hash: str, password_salt: str) -> b
     return hmac.compare_digest(candidate_hash, password_hash)
 
 
-def _record_to_profile(record: UserRecord) -> TeacherProfile:
+def _record_to_profile(record: UserRecord) -> AccountProfile:
     languages = record.teaching_languages or ["中文"]
     created_at = record.created_at.isoformat() if record.created_at else ""
     updated_at = record.updated_at.isoformat() if record.updated_at else ""
-    return TeacherProfile(
+    return AccountProfile(
         user_id=record.id,
         username=record.username,
         display_name=record.display_name,
         teaching_languages=tuple(languages),
+        account_role=_validate_account_role(record.account_role),
         teacher_level=record.teacher_level,
+        student_level=_validate_student_level(record.student_level),
+        learning_goal=_validate_learning_goal(record.learning_goal),
         theme_name=record.theme_name,
         created_at=created_at,
         updated_at=updated_at,
     )
 
 
-def build_guest_profile() -> TeacherProfile:
-    return TeacherProfile(
+def build_guest_profile() -> AccountProfile:
+    return AccountProfile(
         user_id="guest",
         username=DEFAULT_ACCOUNT_ID,
         display_name="访客教师",
         teaching_languages=("中文",),
+        account_role=DEFAULT_ACCOUNT_ROLE,
         teacher_level=DEFAULT_TEACHER_LEVEL,
+        student_level=DEFAULT_STUDENT_LEVEL,
+        learning_goal=DEFAULT_LEARNING_GOAL,
         theme_name=DEFAULT_THEME,
     )
 
@@ -219,7 +317,7 @@ def count_users() -> int:
         return len(session.scalars(select(UserRecord)).all())
 
 
-def list_teacher_profiles() -> list[TeacherProfile]:
+def list_teacher_profiles() -> list[AccountProfile]:
     initialize_profile_store()
     with get_db_session() as session:
         records = session.scalars(select(UserRecord).order_by(UserRecord.created_at.asc())).all()
@@ -236,7 +334,7 @@ def list_teacher_profile_choices() -> list[tuple[str, str]]:
     ]
 
 
-def get_teacher_profile(account_id: str | None = None) -> TeacherProfile:
+def get_teacher_profile(account_id: str | None = None) -> AccountProfile:
     initialize_profile_store()
     if not account_id:
         return build_guest_profile()
@@ -253,7 +351,7 @@ def get_teacher_profile(account_id: str | None = None) -> TeacherProfile:
     return _record_to_profile(record)
 
 
-def get_teacher_profile_by_identifier(identifier: str) -> TeacherProfile | None:
+def get_teacher_profile_by_identifier(identifier: str) -> AccountProfile | None:
     initialize_profile_store()
     resolved = str(identifier or "").strip()
     if not resolved:
@@ -275,7 +373,31 @@ def register_teacher_account(
     teaching_languages: Sequence[str] | str | None,
     teacher_level: str,
     theme_name: str = DEFAULT_THEME,
-) -> TeacherProfile:
+) -> AccountProfile:
+    return register_account(
+        username=username,
+        display_name=display_name,
+        password=password,
+        teaching_languages=teaching_languages,
+        account_role="teacher",
+        teacher_level=teacher_level,
+        student_level=DEFAULT_STUDENT_LEVEL,
+        learning_goal=DEFAULT_LEARNING_GOAL,
+        theme_name=theme_name,
+    )
+
+
+def register_account(
+    username: str,
+    display_name: str,
+    password: str,
+    teaching_languages: Sequence[str] | str | None,
+    account_role: str,
+    teacher_level: str = DEFAULT_TEACHER_LEVEL,
+    student_level: str = DEFAULT_STUDENT_LEVEL,
+    learning_goal: str = DEFAULT_LEARNING_GOAL,
+    theme_name: str = DEFAULT_THEME,
+) -> AccountProfile:
     initialize_profile_store()
     resolved_username = str(username or "").strip()
     resolved_display_name = str(display_name or "").strip()
@@ -285,7 +407,10 @@ def register_teacher_account(
         raise ValueError("账号、账号名和密码不能为空。")
 
     normalized_languages = list(_normalize_languages(teaching_languages))
+    resolved_account_role = _validate_account_role(account_role)
     resolved_teacher_level = _validate_teacher_level(teacher_level)
+    resolved_student_level = _validate_student_level(student_level)
+    resolved_learning_goal = _validate_learning_goal(learning_goal)
     resolved_theme_name = _validate_theme_name(theme_name)
     password_hash, password_salt = _hash_password(resolved_password)
 
@@ -306,7 +431,10 @@ def register_teacher_account(
             password_hash=password_hash,
             password_salt=password_salt,
             teaching_languages=normalized_languages,
+            account_role=resolved_account_role,
             teacher_level=resolved_teacher_level,
+            student_level=resolved_student_level,
+            learning_goal=resolved_learning_goal,
             theme_name=resolved_theme_name,
         )
         session.add(record)
@@ -315,7 +443,7 @@ def register_teacher_account(
         return _record_to_profile(record)
 
 
-def authenticate_teacher(identifier: str, password: str) -> TeacherProfile | None:
+def authenticate_teacher(identifier: str, password: str) -> AccountProfile | None:
     initialize_profile_store()
     resolved_identifier = str(identifier or "").strip()
     resolved_password = str(password or "")
@@ -343,7 +471,32 @@ def update_teacher_profile(
     teacher_level: str,
     theme_name: str,
     password: str | None = None,
-) -> TeacherProfile:
+) -> AccountProfile:
+    return update_account_profile(
+        user_id,
+        display_name=display_name,
+        teaching_languages=teaching_languages,
+        account_role="teacher",
+        teacher_level=teacher_level,
+        student_level=DEFAULT_STUDENT_LEVEL,
+        learning_goal=DEFAULT_LEARNING_GOAL,
+        theme_name=theme_name,
+        password=password,
+    )
+
+
+def update_account_profile(
+    user_id: str,
+    *,
+    display_name: str,
+    teaching_languages: Sequence[str] | str | None,
+    account_role: str,
+    teacher_level: str,
+    student_level: str,
+    learning_goal: str,
+    theme_name: str,
+    password: str | None = None,
+) -> AccountProfile:
     initialize_profile_store()
     resolved_user_id = str(user_id or "").strip()
     if not resolved_user_id:
@@ -354,7 +507,10 @@ def update_teacher_profile(
         raise ValueError("账号名不能为空。")
 
     normalized_languages = list(_normalize_languages(teaching_languages))
+    resolved_account_role = _validate_account_role(account_role)
     resolved_teacher_level = _validate_teacher_level(teacher_level)
+    resolved_student_level = _validate_student_level(student_level)
+    resolved_learning_goal = _validate_learning_goal(learning_goal)
     resolved_theme_name = _validate_theme_name(theme_name)
 
     with get_db_session() as session:
@@ -372,7 +528,10 @@ def update_teacher_profile(
 
         record.display_name = resolved_display_name
         record.teaching_languages = normalized_languages
+        record.account_role = resolved_account_role
         record.teacher_level = resolved_teacher_level
+        record.student_level = resolved_student_level
+        record.learning_goal = resolved_learning_goal
         record.theme_name = resolved_theme_name
         record.updated_at = datetime.now(timezone.utc)
         if password:
@@ -418,7 +577,7 @@ def create_user_session(user_id: str) -> str:
     return session_id
 
 
-def get_teacher_profile_by_session(session_id: str | None, *, touch: bool = True) -> TeacherProfile | None:
+def get_teacher_profile_by_session(session_id: str | None, *, touch: bool = True) -> AccountProfile | None:
     initialize_profile_store()
     resolved_session_id = str(session_id or "").strip()
     if not resolved_session_id:

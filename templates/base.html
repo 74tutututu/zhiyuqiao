@@ -7,7 +7,8 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='/favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
 </head>
-<body data-theme="{{ user.theme_name if user else default_theme }}">
+<body data-theme="{{ user.theme_name if user else default_theme }}" data-role="{{ user.account_role if user else 'guest' }}">
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
     {% block body %}{% endblock %}
 </body>
 </html>

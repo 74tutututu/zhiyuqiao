@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block body %}
+<header class="app-topbar">
+    <a class="wordmark" href="/teacher">智语桥 <span>ZHIYUQIAO</span></a>
+    <div class="workspace-switch"><span class="workspace-dot"></span> 教师工作台</div>
+    <nav class="top-actions" aria-label="教师账户导航">
+        <span class="top-profile"><b>{{ user.display_name }}</b><small>{{ user.teacher_role_label }}</small></span>
+        <a class="icon-link" href="/settings" aria-label="账号设置">设置</a>
+        <form method="post" action="/logout"><button class="quiet-btn" type="submit">退出</button></form>
+    </nav>
+</header>
+
+<main id="main-content" class="workspace-shell teacher-workspace">
+    <aside class="tool-sidebar">
+        <div class="sidebar-heading"><p class="kicker">TEACHING TOOLS</p><h2>教学工具箱</h2><span>从文化任务到课堂评价</span></div>
+        <div id="skill-list" class="skill-list" role="list">
+            {% for skill in skills %}
+            <button type="button" class="skill-item {% if loop.first %}active{% endif %}" data-skill-key="{{ skill.key }}" data-skill-label="{{ skill.label }}" data-skill-description="{{ skill.description }}">
+                <span class="skill-icon">{{ skill.icon }}</span><span class="skill-copy"><b>{{ skill.label }}</b><small>{{ skill.description }}</small></span><span class="skill-arrow">›</span>
+            </button>
+            {% endfor %}
+        </div>
+        <div class="evidence-note"><span>AI + 人工把关</span><p>文化事实、政策与教学决策请由教师核验后使用。</p></div>
+    </aside>
+
+    <section class="workspace-main">
+        <section class="workspace-hero teacher-hero">
+            <div class="hero-copy">
+                <p class="kicker kicker-light">今日教学空间</p>
+                <h1>{{ user.display_name }}，把上海变成一间中文课堂。</h1>
+                <p>从真实的城市场景出发，生成语言支架清晰、文化信息可核验、评价环节完整的教学方案。</p>
+                <div class="hero-actions">
+                    <button class="light-btn" type="button" data-skill-target="haipai_lesson_lab" data-prompt="为HSK2学习者设计一节30分钟的外滩与陆家嘴对比课，包含文化事实核验、语言支架和形成性评价。">设计一节海派文化课</button>
+                    <button class="glass-btn" type="button" data-skill-target="bridge_lesson_design" data-prompt="把杨浦滨江工业遗产设计成一项可在现场完成的小组中文任务。">生成现场任务</button>
+                </div>
+            </div>
+            <div class="hero-metrics">
+                <div><strong>25,145</strong><span>知识条目</span></div><div><strong>6</strong><span>海派主题</span></div><div><strong>8</strong><span>教师工具</span></div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <div class="section-heading section-heading-row"><div><p class="kicker">HAIPAI TASKS</p><h2>从城市资源到课堂任务</h2></div><span class="section-hint">选择主题，自动带入课程实验室</span></div>
+            <div class="culture-strip">
+                {% set teacher_topics = [
+                    ('01','外滩 × 陆家嘴','城市时间','为HSK1—2学习者设计外滩与陆家嘴对比观察任务。'),
+                    ('02','你好 × 侬好','语言接触','设计普通话与沪语问候的跨文化微课。'),
+                    ('03','茶 × 咖啡','日常交融','设计茶与咖啡主题的中文交际活动。'),
+                    ('04','上海地铁','公共文明','设计上海地铁问路与公共文明任务。'),
+                    ('05','建筑可阅读','城市记忆','把建筑可阅读设计成中级中文项目。'),
+                    ('06','杨浦滨江','工业遗产','把杨浦滨江工业遗产转化为HSK3—4口语任务。')
+                ] %}
+                {% for no, title, tag, prompt in teacher_topics %}<button class="culture-card" type="button" data-skill-target="haipai_lesson_lab" data-prompt="{{ prompt }}"><span>{{ no }}</span><b>{{ title }}</b><small>{{ tag }}</small><i>↗</i></button>{% endfor %}
+            </div>
+        </section>
+
+        <section class="assistant-workbench">
+            <header class="workbench-header">
+                <div><p class="kicker">AI WORKBENCH</p><h2 id="current-skill-title">{{ skills[0].label }}</h2><p id="current-skill-description">{{ skills[0].description }}</p></div>
+                <span class="live-badge"><i></i> 知识库已连接</span>
+            </header>
+            <div id="starter-prompts" class="starter-prompts" aria-label="推荐问题"></div>
+            <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
+            <div class="composer-card">
+                <textarea id="composer-input" rows="4" maxlength="6000" placeholder="描述学习者水平、课堂时长、文化主题和你希望得到的产出……"></textarea>
+                <div class="composer-footer"><span id="character-count">0 / 6000</span><div class="action-row"><button id="clear-btn" class="quiet-btn" type="button">清空</button><button id="send-btn" class="send-btn" type="button">发送 <span>↗</span></button></div></div>
+            </div>
+        </section>
+    </section>
+</main>
+
+<script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "teacher" };</script>
+<script src="{{ url_for('static', path='/assistant.js') }}"></script>
+{% endblock %}

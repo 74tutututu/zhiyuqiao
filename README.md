@@ -1,15 +1,15 @@
 # 智语桥（ZhiYuQiao）
 
-面向国际中文教师的 AI 助手示例实现：本地知识库检索（RAG-lite）+ DeepSeek(OpenAI-compatible) 对话生成 + FastAPI 网页工作台。
+面向国际中文教师与学习者的海派文化 AI 学习平台：本地知识库检索（RAG-lite）+ DeepSeek(OpenAI-compatible) 对话生成 + FastAPI 双角色网页工作台。
 
 ## 目录结构
 
 - `app.py`：启动入口，默认运行 FastAPI 网站（端口默认 `7860`）
 - `main.py`：网站与 API 主应用，包含登录、注册、设置、会话和助手页面
-- `templates/`：登录 / 注册 / 设置 / 助手页面模板
+- `templates/`：登录 / 注册 / 设置 / 学生学习空间 / 教师教学工作台模板
 - `static/`：网站样式与前端交互脚本
 - `core/db.py`：数据库连接与会话工厂
-- `core/account_profiles.py`：账号、密码哈希、教学画像、服务端会话
+- `core/account_profiles.py`：账号、密码哈希、学生/教师画像、服务端会话
 - `core/assistant_service.py`：网页工作台的统一 skill 调度入口
 - `core/ai_agent.py`：顾问对话（检索 + 生成）
 - `core/retriever.py`：知识库检索与路由（HSK/策略/软件/文献/纠错等）
@@ -51,8 +51,10 @@ python3 app.py
 首次启动后：
 
 - 如果系统里还没有任何账号，会先进入注册页
-- 注册完成后，使用账号或账号名 + 密码登录
-- 教学语种、教师水平、主题色都可以在 `/settings` 中修改
+- 注册时可选择“学生”或“教师”，登录后系统自动进入对应空间
+- 学生端按 HSK 水平和学习目标提供海派文化探索、中文学习与情景口语功能
+- 教师端提供海派文化课程实验室、教学设计、批改、翻译与标准政策工具
+- 身份、讲解语种、学习/教学画像和主题色都可以在 `/settings` 中修改
 
 ## 运行主应用（uvicorn 方式）
 
@@ -67,7 +69,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 - `/register`：注册页
 - `/login`：登录页
-- `/assistant`：主助手工作台
+- `/student`：学生学习空间（仅学生身份）
+- `/teacher`：教师教学工作台（仅教师身份）
+- `/assistant`：兼容入口，按当前身份自动跳转
 - `/settings`：账号设置页
 
 ## 主要 API
