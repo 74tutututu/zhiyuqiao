@@ -4,3 +4,4 @@
 torch==2.11.0+cpu
 chromadb==1.5.8
 sentence-transformers==5.4.1
+optimum[onnxruntime]==2.1.0

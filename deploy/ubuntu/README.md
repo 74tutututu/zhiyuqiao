@@ -105,10 +105,14 @@ pip install -r requirements-vector.txt
 ```dotenv
 ZHIYUQIAO_VECTOR_DB_DIR=/srv/zhiyuqiao/data/vectors
 ZHIYUQIAO_EMBEDDING_MODEL=/srv/zhiyuqiao/models/paraphrase-multilingual-MiniLM-L12-v2
+ZHIYUQIAO_EMBEDDING_BACKEND=onnx
+ZHIYUQIAO_EMBEDDING_ONNX_FILE=onnx/model_int8_avx2.onnx
 HF_HUB_OFFLINE=1
 TRANSFORMERS_OFFLINE=1
 ZHIYUQIAO_VECTOR_WARMUP=1
 ```
+
+2GB CPU 服务器应在开发机提前导出 ONNX INT8 文件，再把成品放入模型目录的 `onnx/` 子目录。不要在生产服务器启动时执行 PyTorch 动态量化，否则转换峰值可能触发 Swap 抖动。
 
 同步完成后先执行离线验收，再重启网站：
 

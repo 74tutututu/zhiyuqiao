@@ -36,6 +36,8 @@ EMBEDDING_MODEL = os.getenv(
     "ZHIYUQIAO_EMBEDDING_MODEL",
     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
 )
+EMBEDDING_BACKEND = os.getenv("ZHIYUQIAO_EMBEDDING_BACKEND", "torch").strip().lower() or "torch"
+EMBEDDING_ONNX_FILE = os.getenv("ZHIYUQIAO_EMBEDDING_ONNX_FILE", "").strip()
 VECTOR_SEARCH_TOP_K = 5
 VECTOR_DB_PATH = str(VECTOR_DB_DIR)
 
@@ -83,6 +85,8 @@ def get_config_dict() -> dict:
         "database_dir": str(DATABASE_DIR),
         "vector_db_dir": str(VECTOR_DB_DIR),
         "embedding_model": EMBEDDING_MODEL,
+        "embedding_backend": EMBEDDING_BACKEND,
+        "embedding_onnx_file": EMBEDDING_ONNX_FILE,
         "vector_search_top_k": VECTOR_SEARCH_TOP_K,
         "cache_max_size": CACHE_MAX_SIZE,
         "cache_ttl_minutes": CACHE_TTL_MINUTES,

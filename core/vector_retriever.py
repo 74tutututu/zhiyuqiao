@@ -15,7 +15,12 @@ from datetime import datetime, timedelta
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-from .config import EMBEDDING_MODEL, VECTOR_DB_DIR
+from .config import (
+    EMBEDDING_BACKEND,
+    EMBEDDING_MODEL,
+    EMBEDDING_ONNX_FILE,
+    VECTOR_DB_DIR,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +72,15 @@ class VectorDB:
             )
 
             # Initialize embedding model
-            logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
-            self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+            model_options: dict[str, Any] = {"backend": EMBEDDING_BACKEND}
+            if EMBEDDING_BACKEND == "onnx" and EMBEDDING_ONNX_FILE:
+                model_options["model_kwargs"] = {"file_name": EMBEDDING_ONNX_FILE}
+            logger.info(
+                "Loading embedding model: %s (backend=%s)",
+                EMBEDDING_MODEL,
+                EMBEDDING_BACKEND,
+            )
+            self.embedding_model = SentenceTransformer(EMBEDDING_MODEL, **model_options)
 
             # Get or create collections
             self.collections = {}
