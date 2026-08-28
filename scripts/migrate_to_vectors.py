@@ -10,7 +10,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import List
 import time
 
 import pandas as pd
@@ -31,7 +31,7 @@ DATABASE_DIR = PROJECT_ROOT / "database"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from core.config import EMBEDDING_MODEL, VECTOR_DB_DIR
+from core.config import EMBEDDING_MODEL, VECTOR_DB_DIR  # noqa: E402
 
 # Constants
 BATCH_SIZE = 256  # Batch size for embedding generation
@@ -54,7 +54,7 @@ class VectorDBMigrator:
         logger.info(f"Initializing Chroma client at {self.db_dir}")
         self.client = chromadb.PersistentClient(
             path=str(self.db_dir),
-            settings=chromadb.Settings(anonymized_telemetry=False)
+            settings=chromadb.Settings(anonymized_telemetry=False, allow_reset=True)
         )
 
         if reset:
@@ -70,7 +70,8 @@ class VectorDBMigrator:
             "teacher": 0,
             "strategies": 0,
             "references": 0,
-            "softwares": 0
+            "softwares": 0,
+            "haipai": 0,
         }
         self._prepared_domains = set()
 
@@ -145,7 +146,7 @@ class VectorDBMigrator:
         try:
             self.client.delete_collection(name="hsk")
             logger.info("Deleted existing HSK collection")
-        except:
+        except Exception:
             pass
 
         collection = self.client.get_or_create_collection(
@@ -484,6 +485,15 @@ class VectorDBMigrator:
         for jsonl_file in references_dir.rglob("*.jsonl"):
             self.migrate_jsonl_domain("references", jsonl_file, chunk=True)
 
+    def migrate_haipai(self):
+        """Migrate the small, source-traceable Haipai culture corpus."""
+        haipai_dir = DATABASE_DIR / "haipai_culture"
+        if not haipai_dir.exists():
+            logger.warning("Haipai culture directory not found: %s", haipai_dir)
+            return
+        for jsonl_file in haipai_dir.glob("*.jsonl"):
+            self.migrate_jsonl_domain("haipai", jsonl_file, chunk=False)
+
     def migrate_softwares(self):
         """Migrate software documentation."""
         logger.info("="*50)
@@ -501,15 +511,16 @@ class VectorDBMigrator:
         logger.info("MIGRATION VERIFICATION")
         logger.info("="*50)
 
-        for domain, count in self.stats.items():
+        total = 0
+        for domain in self.stats:
             collection = self.client.get_or_create_collection(name=domain)
             actual_count = collection.count()
+            total += actual_count
             status = "✓" if actual_count > 0 else "✗"
             logger.info(f"{status} {domain.upper():15} {actual_count:6} items")
 
-        total = sum(self.stats.values())
         logger.info("-" * 50)
-        logger.info(f"TOTAL: {total} items migrated")
+        logger.info(f"TOTAL: {total} indexed items")
         logger.info("="*50)
 
     def run_full_migration(self):
@@ -522,6 +533,7 @@ class VectorDBMigrator:
         self.migrate_strategies()
         self.migrate_references()
         self.migrate_softwares()
+        self.migrate_haipai()
 
         elapsed = time.time() - start_time
         logger.info(f"\n✓ Migration completed in {elapsed:.1f} seconds")
@@ -536,12 +548,20 @@ def main():
     parser = argparse.ArgumentParser(description="Migrate knowledge base to vector database")
     parser.add_argument("--reset", action="store_true", help="Reset vector database before migration")
     parser.add_argument("--verify-only", action="store_true", help="Only verify existing data")
+    parser.add_argument(
+        "--domain",
+        choices=("hsk", "mucgec", "teacher", "strategies", "references", "softwares", "haipai"),
+        help="Rebuild only one collection instead of the complete index",
+    )
     args = parser.parse_args()
 
     try:
         migrator = VectorDBMigrator(reset=args.reset)
 
         if args.verify_only:
+            migrator.verify_migration()
+        elif args.domain:
+            getattr(migrator, f"migrate_{args.domain}")()
             migrator.verify_migration()
         else:
             migrator.run_full_migration()

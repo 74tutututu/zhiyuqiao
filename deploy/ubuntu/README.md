@@ -91,6 +91,33 @@ sudo systemctl status zhiyuqiao -l
 curl --fail http://127.0.0.1:7860/health/ready
 ```
 
+### 可选：启用语义向量检索
+
+2GB 内存服务器不要在线重建全部索引。先在开发机运行 `scripts/migrate_to_vectors.py --reset`；单独更新海派文化资料时可运行 `scripts/migrate_to_vectors.py --domain haipai`。然后把生成的 Chroma 目录和同一嵌入模型安全同步到服务器。服务器只安装 CPU 查询运行时：
+
+```bash
+source .venv/bin/activate
+pip install -r requirements-vector.txt
+```
+
+在 `.env` 中分别设置服务器上的索引与模型绝对路径：
+
+```dotenv
+ZHIYUQIAO_VECTOR_DB_DIR=/srv/zhiyuqiao/data/vectors
+ZHIYUQIAO_EMBEDDING_MODEL=/srv/zhiyuqiao/models/paraphrase-multilingual-MiniLM-L12-v2
+HF_HUB_OFFLINE=1
+TRANSFORMERS_OFFLINE=1
+```
+
+同步完成后先执行离线验收，再重启网站：
+
+```bash
+python scripts/verify_vector_index.py
+sudo systemctl restart zhiyuqiao
+```
+
+向量组件不可用时，应用仍会自动降级到 TF-IDF，不会阻断网站启动。
+
 查看日志：
 
 ```bash

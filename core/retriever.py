@@ -1007,7 +1007,9 @@ def get_relevant_info(query_text, hsk_level="不限"):
             elif domain == "softwares":
                 result = _search_softwares(_kb, query_text)
             elif domain == "haipai":
-                result = _search_tfidf(_kb, "haipai", query_text)
+                result = _search_vector("haipai", query_text)
+                if not result:
+                    result = _search_tfidf(_kb, "haipai", query_text)
             else:
                 # 对于 teacher 和 references，优先向量搜索
                 result = _search_vector(domain, query_text)
@@ -1139,7 +1141,13 @@ def get_relevant_info_by_domains(query_text, domains, hsk_level="不限"):
             elif domain == "softwares":
                 result = _search_softwares(_kb, query_text)
             elif domain == "haipai":
-                result = _search_tfidf(_kb, "haipai", query_text)
+                result = _search_vector("haipai", query_text)
+                if not result:
+                    result = _search_tfidf(_kb, "haipai", query_text)
+            elif domain in {"teacher", "references"}:
+                result = _search_vector(domain, query_text)
+                if not result:
+                    result = _search_tfidf(_kb, domain, query_text)
             else:
                 result = _search_tfidf(_kb, domain, query_text)
 

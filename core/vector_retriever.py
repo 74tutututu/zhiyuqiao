@@ -25,6 +25,15 @@ MAX_CONTEXT_CHARS = 3000
 VECTOR_SEARCH_TOP_K = 5
 CACHE_TTL_MINUTES = 60
 CACHE_MAX_SIZE = 1000
+VECTOR_DOMAINS = (
+    "hsk",
+    "mucgec",
+    "teacher",
+    "strategies",
+    "references",
+    "softwares",
+    "haipai",
+)
 
 
 class VectorDB:
@@ -67,9 +76,7 @@ class VectorDB:
 
     def _init_collections(self):
         """Initialize all knowledge domain collections."""
-        collection_names = ["hsk", "mucgec", "teacher", "strategies", "references", "softwares"]
-
-        for name in collection_names:
+        for name in VECTOR_DOMAINS:
             try:
                 collection = self.client.get_or_create_collection(
                     name=name,
@@ -275,14 +282,13 @@ class VectorRetriever:
 
         Args:
             query: Search query
-            domain: Knowledge domain (hsk, mucgec, teacher, strategies, references, softwares)
+            domain: Knowledge domain, including the traceable Haipai culture corpus.
             top_k: Number of results
 
         Returns:
             List of relevant documents
         """
-        valid_domains = ["hsk", "mucgec", "teacher", "strategies", "references", "softwares"]
-        if domain not in valid_domains:
+        if domain not in VECTOR_DOMAINS:
             logger.warning(f"Unknown domain: {domain}")
             return []
 
