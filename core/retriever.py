@@ -20,6 +20,8 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from .config import EMBEDDING_BACKEND
+
 logger = logging.getLogger(__name__)
 
 # Detect optional dependencies without importing Torch during web-process startup.
@@ -49,6 +51,7 @@ _VECTOR_RUNTIME_LOCK = threading.Lock()
 _VECTOR_RUNTIME_STATUS: dict[str, object] = {
     "mode": "vector" if VECTOR_DB_AVAILABLE else "tfidf",
     "status": "cold" if VECTOR_DB_AVAILABLE else "fallback",
+    "backend": EMBEDDING_BACKEND if VECTOR_DB_AVAILABLE else "tfidf",
 }
 
 
@@ -74,7 +77,12 @@ def _warm_vector_retrieval() -> None:
         if not results:
             raise RuntimeError("Haipai vector warm-up returned no result")
         total = sum(collection.count() for collection in retriever.db.collections.values())
-        _set_vector_runtime_status(mode="vector", status="ready", indexed_records=total)
+        _set_vector_runtime_status(
+            mode="vector",
+            status="ready",
+            backend=EMBEDDING_BACKEND,
+            indexed_records=total,
+        )
         logger.info("Vector retrieval warm-up completed (%s indexed records)", total)
     except Exception as exc:
         _set_vector_runtime_status(mode="tfidf", status="fallback")
