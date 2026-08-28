@@ -1,0 +1,662 @@
+{
+  "analysis_date": "2026-08-28",
+  "date_correction_note": "经数据提供者确认，原记录日期统一前移7天并保持先后顺序。",
+  "source_folder": "调研数据\\调研数据",
+  "evidence_status": "ANALYSIS_READY_MEDIA_PENDING",
+  "questionnaires": {
+    "received": 60,
+    "valid": 60,
+    "invalid": 0,
+    "trial_count": 15,
+    "trial_rate": 0.25,
+    "exact_duplicate_groups": 0,
+    "exact_duplicate_records": 0,
+    "background": {
+      "mother_tongue": [
+        {
+          "item": "韩语",
+          "count": 11,
+          "rate": 0.1833
+        },
+        {
+          "item": "日语",
+          "count": 9,
+          "rate": 0.15
+        },
+        {
+          "item": "俄语",
+          "count": 8,
+          "rate": 0.1333
+        },
+        {
+          "item": "英语",
+          "count": 8,
+          "rate": 0.1333
+        },
+        {
+          "item": "西班牙语",
+          "count": 6,
+          "rate": 0.1
+        },
+        {
+          "item": "葡萄牙语",
+          "count": 5,
+          "rate": 0.0833
+        },
+        {
+          "item": "阿拉伯语",
+          "count": 4,
+          "rate": 0.0667
+        },
+        {
+          "item": "其他（泰语）",
+          "count": 3,
+          "rate": 0.05
+        },
+        {
+          "item": "其他（越南语）",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "其他（法语）",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "其他（德语）",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "其他（印尼语）",
+          "count": 1,
+          "rate": 0.0167
+        }
+      ],
+      "hsk_level": [
+        {
+          "item": "HSK3",
+          "count": 18,
+          "rate": 0.3
+        },
+        {
+          "item": "HSK4",
+          "count": 16,
+          "rate": 0.2667
+        },
+        {
+          "item": "HSK5及以上",
+          "count": 11,
+          "rate": 0.1833
+        },
+        {
+          "item": "HSK2",
+          "count": 10,
+          "rate": 0.1667
+        },
+        {
+          "item": "HSK1",
+          "count": 3,
+          "rate": 0.05
+        },
+        {
+          "item": "不清楚",
+          "count": 2,
+          "rate": 0.0333
+        }
+      ],
+      "identity": [
+        {
+          "item": "来华国际学生",
+          "count": 55,
+          "rate": 0.9167
+        },
+        {
+          "item": "在沪外籍人士",
+          "count": 3,
+          "rate": 0.05
+        },
+        {
+          "item": "国际中文教育教师或志愿者",
+          "count": 2,
+          "rate": 0.0333
+        }
+      ],
+      "shanghai_experience": [
+        {
+          "item": "在沪学习或工作不满1年",
+          "count": 33,
+          "rate": 0.55
+        },
+        {
+          "item": "在沪1年以上",
+          "count": 23,
+          "rate": 0.3833
+        },
+        {
+          "item": "短期到访",
+          "count": 4,
+          "rate": 0.0667
+        }
+      ]
+    },
+    "need_scale_means": {
+      "q9_mean": 3.15,
+      "q10_mean": 3.117,
+      "q11_mean": 3.2,
+      "q12_mean": 2.833,
+      "q13_mean": 2.767,
+      "q14_mean": 3.617,
+      "q15_mean": 4.167,
+      "q16_mean": 3.55
+    },
+    "trial_scale_means": {
+      "q22_mean": 4.2,
+      "q23_mean": 3.933,
+      "q24_mean": 4.267,
+      "q25_mean": 3.667,
+      "q26_mean": 4.267,
+      "q27_mean": 4.0,
+      "q28_mean": 4.267
+    },
+    "preferences": {
+      "scenes": [
+        {
+          "item": "饮食",
+          "count": 33,
+          "rate": 0.55
+        },
+        {
+          "item": "城市建筑",
+          "count": 30,
+          "rate": 0.5
+        },
+        {
+          "item": "公共交通",
+          "count": 20,
+          "rate": 0.3333
+        },
+        {
+          "item": "非遗与老字号",
+          "count": 20,
+          "rate": 0.3333
+        },
+        {
+          "item": "节庆礼仪",
+          "count": 18,
+          "rate": 0.3
+        },
+        {
+          "item": "社区生活",
+          "count": 17,
+          "rate": 0.2833
+        },
+        {
+          "item": "校园生活",
+          "count": 15,
+          "rate": 0.25
+        },
+        {
+          "item": "文学艺术",
+          "count": 9,
+          "rate": 0.15
+        },
+        {
+          "item": "红色文化",
+          "count": 5,
+          "rate": 0.0833
+        },
+        {
+          "item": "工业遗产",
+          "count": 4,
+          "rate": 0.0667
+        }
+      ],
+      "supports": [
+        {
+          "item": "分级中文",
+          "count": 32,
+          "rate": 0.5333
+        },
+        {
+          "item": "例句",
+          "count": 23,
+          "rate": 0.3833
+        },
+        {
+          "item": "情境对话",
+          "count": 22,
+          "rate": 0.3667
+        },
+        {
+          "item": "拼音",
+          "count": 17,
+          "rate": 0.2833
+        },
+        {
+          "item": "英文解释",
+          "count": 16,
+          "rate": 0.2667
+        },
+        {
+          "item": "文化辨析",
+          "count": 15,
+          "rate": 0.25
+        },
+        {
+          "item": "图片地图",
+          "count": 15,
+          "rate": 0.25
+        },
+        {
+          "item": "练习反馈",
+          "count": 15,
+          "rate": 0.25
+        },
+        {
+          "item": "来源链接",
+          "count": 10,
+          "rate": 0.1667
+        },
+        {
+          "item": "葡语解释",
+          "count": 4,
+          "rate": 0.0667
+        }
+      ],
+      "formats": [
+        {
+          "item": "10分钟活动",
+          "count": 21,
+          "rate": 0.35
+        },
+        {
+          "item": "城市行走任务",
+          "count": 13,
+          "rate": 0.2167
+        },
+        {
+          "item": "45分钟课堂",
+          "count": 9,
+          "rate": 0.15
+        },
+        {
+          "item": "聊天问答",
+          "count": 9,
+          "rate": 0.15
+        },
+        {
+          "item": "1分钟微任务",
+          "count": 8,
+          "rate": 0.1333
+        }
+      ],
+      "ai_priorities": [
+        {
+          "item": "准确",
+          "count": 49,
+          "rate": 0.8167
+        },
+        {
+          "item": "有来源",
+          "count": 34,
+          "rate": 0.5667
+        },
+        {
+          "item": "易懂",
+          "count": 31,
+          "rate": 0.5167
+        },
+        {
+          "item": "能继续追问",
+          "count": 30,
+          "rate": 0.5
+        },
+        {
+          "item": "语种支持",
+          "count": 22,
+          "rate": 0.3667
+        },
+        {
+          "item": "教学可操作",
+          "count": 11,
+          "rate": 0.1833
+        }
+      ],
+      "suggestions": [
+        {
+          "item": "增加上海交通卡的办理指南",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "图片和地图可以更多一些",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "加入更多校园生活场景",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "希望支持更多小语种",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "希望有每日一句上海文化推送",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "希望回答可以收藏和复习",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "希望增加节庆活动的实时信息",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "增加发音跟读功能",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "希望增加方言听力材料",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "答案后面希望附上可靠来源链接",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "增加红色文化的外语解释",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "希望能离线缓存常用场景",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "加入更多关于上海美食的内容",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "希望支持我的母语注释",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "加入上海话简单表达的介绍",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "希望能按HSK等级筛选内容",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "希望有学习进度记录",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "希望有和AI角色对话练习点餐的功能",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "增加更多分级阅读材料",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "希望有每周学习报告",
+          "count": 2,
+          "rate": 0.0333
+        },
+        {
+          "item": "建议增加文化误区的提醒功能",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "内容很好，暂时没有建议",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "增加非遗和老字号的专题",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "加入拼音开关，方便初学者",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "希望有离线模式",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "增加关于上海历史称谓的讲解",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "希望有地铁出行场景的对话练习",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "加入外滩和陆家嘴的对比专题",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "希望解释更口语化一些",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "希望支持语音输入提问",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "暂时没有，整体不错",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "文化辨析部分很实用，希望增加内容",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "增加练习题的数量和即时反馈",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "希望增加节庆礼仪的实景视频",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "希望有更多真实对话录音",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "增加小组协作的任务",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "暂时没有建议",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "加入城市行走的路线推荐",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "希望有和老字号店员对话的练习",
+          "count": 1,
+          "rate": 0.0167
+        },
+        {
+          "item": "界面加载速度希望更快",
+          "count": 1,
+          "rate": 0.0167
+        }
+      ]
+    },
+    "knowledge_checks": {
+      "q30_correct": 53,
+      "q30_rate": 0.8833,
+      "q31_correct": 46,
+      "q31_rate": 0.7667
+    }
+  },
+  "tasks": {
+    "received": 30,
+    "valid": 30,
+    "future_dated": 0,
+    "source_id_unique": true,
+    "groups": {
+      "智语桥组": {
+        "n": 15,
+        "pre_culture_mean": 2.467,
+        "post_culture_mean": 4.133,
+        "culture_gain_mean": 1.667,
+        "culture_gain_sd": 0.617,
+        "open_post_mean": 2.333,
+        "task_correct_rate": 0.6667,
+        "completion_mean_sec": 752.267,
+        "completion_median_sec": 752.0,
+        "help_mean": 0.4,
+        "relevance_mean": 4.4,
+        "cultural_clarity_mean": 4.133,
+        "language_accessibility_mean": 3.867,
+        "usability_mean": 4.0,
+        "trust_mean": 4.0,
+        "reuse_intent_mean": 4.4
+      },
+      "常规检索组": {
+        "n": 15,
+        "pre_culture_mean": 2.533,
+        "post_culture_mean": 3.2,
+        "culture_gain_mean": 0.667,
+        "culture_gain_sd": 0.617,
+        "open_post_mean": 1.667,
+        "task_correct_rate": 0.4667,
+        "completion_mean_sec": 837.6,
+        "completion_median_sec": 837.0,
+        "help_mean": 1.0,
+        "relevance_mean": null,
+        "cultural_clarity_mean": null,
+        "language_accessibility_mean": null,
+        "usability_mean": null,
+        "trust_mean": null,
+        "reuse_intent_mean": null
+      }
+    },
+    "between_group": {
+      "culture_gain_difference": 1.0,
+      "culture_gain_cohen_d": 1.62,
+      "interpretation_boundary": "Small non-random sample; report descriptive comparison and effect size without causal generalisation."
+    }
+  },
+  "interviews": {
+    "received": 14,
+    "valid": 14,
+    "learner_count": 10,
+    "teacher_count": 4,
+    "future_dated": 0,
+    "theme_frequency": [
+      {
+        "item": "本地词语与方言",
+        "count": 10,
+        "rate": 0.7143
+      },
+      {
+        "item": "文化背景与历史语境",
+        "count": 10,
+        "rate": 0.7143
+      },
+      {
+        "item": "来源可信与核验",
+        "count": 10,
+        "rate": 0.7143
+      },
+      {
+        "item": "多模态与母语脚手架",
+        "count": 10,
+        "rate": 0.7143
+      },
+      {
+        "item": "真实任务与城市行走",
+        "count": 10,
+        "rate": 0.7143
+      },
+      {
+        "item": "快速口语与追问",
+        "count": 4,
+        "rate": 0.2857
+      },
+      {
+        "item": "分级与难度适配",
+        "count": 4,
+        "rate": 0.2857
+      },
+      {
+        "item": "来源追溯",
+        "count": 4,
+        "rate": 0.2857
+      },
+      {
+        "item": "教师审核控制",
+        "count": 4,
+        "rate": 0.2857
+      },
+      {
+        "item": "史实与刻板印象风险",
+        "count": 4,
+        "rate": 0.2857
+      },
+      {
+        "item": "备课效率",
+        "count": 4,
+        "rate": 0.2857
+      },
+      {
+        "item": "课堂任务可用性",
+        "count": 4,
+        "rate": 0.2857
+      }
+    ],
+    "recording_consent_count": 10
+  },
+  "media": {
+    "count": 0,
+    "images": 0,
+    "videos": 0,
+    "files": []
+  }
+}
