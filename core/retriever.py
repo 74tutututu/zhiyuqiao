@@ -8,6 +8,7 @@ Now supports dual-mode: Vector Database (preferred) with TF-IDF fallback.
 """
 
 import json
+import importlib.util
 import logging
 import os
 import random
@@ -21,14 +22,27 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 logger = logging.getLogger(__name__)
 
-# Try to import vector retriever
-get_vector_retriever = None
-try:
-    from .vector_retriever import get_vector_retriever
-    VECTOR_DB_AVAILABLE = True
-    logger.info("Vector database support enabled")
-except ImportError:
-    VECTOR_DB_AVAILABLE = False
+# Detect optional dependencies without importing Torch during web-process startup.
+VECTOR_DB_AVAILABLE = bool(
+    importlib.util.find_spec("chromadb")
+    and importlib.util.find_spec("sentence_transformers")
+)
+_VECTOR_RETRIEVER_FACTORY = None
+
+
+def get_vector_retriever():
+    global _VECTOR_RETRIEVER_FACTORY
+    if not VECTOR_DB_AVAILABLE:
+        raise ImportError("Vector retrieval dependencies are not installed")
+    if _VECTOR_RETRIEVER_FACTORY is None:
+        from .vector_retriever import get_vector_retriever as factory
+
+        _VECTOR_RETRIEVER_FACTORY = factory
+        logger.info("Vector database support enabled")
+    return _VECTOR_RETRIEVER_FACTORY()
+
+
+if not VECTOR_DB_AVAILABLE:
     logger.warning("Vector database not available, using TF-IDF fallback")
 
 _VECTOR_RUNTIME_LOCK = threading.Lock()
@@ -50,7 +64,7 @@ def get_retrieval_runtime_status() -> dict[str, object]:
 
 
 def _warm_vector_retrieval() -> None:
-    if not VECTOR_DB_AVAILABLE or get_vector_retriever is None:
+    if not VECTOR_DB_AVAILABLE:
         _set_vector_runtime_status(mode="tfidf", status="fallback")
         return
     _set_vector_runtime_status(mode="vector", status="warming")
@@ -635,7 +649,7 @@ def _search_hsk(kb, query, hsk_level):
 # ── 向量搜索（优先使用）─────────────────────────────────────────────────────
 def _search_vector(domain, query, top_k=TFIDF_TOP_K):
     """使用向量数据库进行语义搜索（若可用）。"""
-    if not VECTOR_DB_AVAILABLE or get_vector_retriever is None:
+    if not VECTOR_DB_AVAILABLE:
         logger.debug(f"Vector DB not available, skipping for domain: {domain}")
         return None
 
