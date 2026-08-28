@@ -6,9 +6,7 @@ multiple knowledge domains (HSK, MUCGEC, teacher development, strategies, etc.)
 """
 
 import logging
-import gc
 import threading
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from collections import OrderedDict
@@ -17,7 +15,7 @@ from datetime import datetime, timedelta
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-from .config import EMBEDDING_MODEL, VECTOR_DB_DIR, VECTOR_DYNAMIC_QUANTIZATION
+from .config import EMBEDDING_MODEL, VECTOR_DB_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -71,19 +69,6 @@ class VectorDB:
             # Initialize embedding model
             logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
             self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
-            if VECTOR_DYNAMIC_QUANTIZATION:
-                import torch
-
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", DeprecationWarning)
-                    quantized_model = torch.ao.quantization.quantize_dynamic(
-                        self.embedding_model,
-                        {torch.nn.Linear},
-                        dtype=torch.qint8,
-                    )
-                self.embedding_model = quantized_model
-                gc.collect()
-                logger.info("Embedding model dynamically quantized for CPU memory efficiency")
 
             # Get or create collections
             self.collections = {}

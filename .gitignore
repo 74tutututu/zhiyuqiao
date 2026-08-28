@@ -16,6 +16,7 @@ node_modules/
 htmlcov/
 data/vectors/
 data/vectors_legacy*/
+models/
 database.rar
 migration.log
 *.code-workspace

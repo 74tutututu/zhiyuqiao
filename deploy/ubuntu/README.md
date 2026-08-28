@@ -108,10 +108,7 @@ ZHIYUQIAO_EMBEDDING_MODEL=/srv/zhiyuqiao/models/paraphrase-multilingual-MiniLM-L
 HF_HUB_OFFLINE=1
 TRANSFORMERS_OFFLINE=1
 ZHIYUQIAO_VECTOR_WARMUP=1
-ZHIYUQIAO_DYNAMIC_QUANTIZATION=1
 ```
-
-对于 2GB CPU 服务器，建议开启动态量化；它只量化查询模型，不改写已构建的 Chroma 索引。上线前仍应使用 `scripts/verify_vector_index.py` 验证目标查询的命中情况。
 
 同步完成后先执行离线验收，再重启网站：
 
