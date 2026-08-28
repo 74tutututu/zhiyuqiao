@@ -9,8 +9,10 @@ Now supports dual-mode: Vector Database (preferred) with TF-IDF fallback.
 
 import json
 import logging
+import os
 import random
 import re
+import threading
 from pathlib import Path
 
 import pandas as pd
@@ -28,6 +30,56 @@ try:
 except ImportError:
     VECTOR_DB_AVAILABLE = False
     logger.warning("Vector database not available, using TF-IDF fallback")
+
+_VECTOR_RUNTIME_LOCK = threading.Lock()
+_VECTOR_RUNTIME_STATUS: dict[str, object] = {
+    "mode": "vector" if VECTOR_DB_AVAILABLE else "tfidf",
+    "status": "cold" if VECTOR_DB_AVAILABLE else "fallback",
+}
+
+
+def _set_vector_runtime_status(**values: object) -> None:
+    with _VECTOR_RUNTIME_LOCK:
+        _VECTOR_RUNTIME_STATUS.update(values)
+
+
+def get_retrieval_runtime_status() -> dict[str, object]:
+    """Return a small, secret-free status object for readiness diagnostics."""
+    with _VECTOR_RUNTIME_LOCK:
+        return dict(_VECTOR_RUNTIME_STATUS)
+
+
+def _warm_vector_retrieval() -> None:
+    if not VECTOR_DB_AVAILABLE or get_vector_retriever is None:
+        _set_vector_runtime_status(mode="tfidf", status="fallback")
+        return
+    _set_vector_runtime_status(mode="vector", status="warming")
+    try:
+        retriever = get_vector_retriever()
+        results = retriever.search_semantic("杨浦滨江工业遗产", "haipai", top_k=1)
+        if not results:
+            raise RuntimeError("Haipai vector warm-up returned no result")
+        total = sum(collection.count() for collection in retriever.db.collections.values())
+        _set_vector_runtime_status(mode="vector", status="ready", indexed_records=total)
+        logger.info("Vector retrieval warm-up completed (%s indexed records)", total)
+    except Exception as exc:
+        _set_vector_runtime_status(mode="tfidf", status="fallback")
+        logger.warning("Vector warm-up failed; TF-IDF fallback remains active: %s", exc)
+
+
+def start_vector_warmup() -> bool:
+    """Warm semantic retrieval in a daemon thread when production paths are configured."""
+    setting = os.getenv("ZHIYUQIAO_VECTOR_WARMUP", "auto").strip().lower()
+    enabled = setting in {"1", "true", "yes", "on"}
+    if setting == "auto":
+        enabled = bool(os.getenv("ZHIYUQIAO_VECTOR_DB_DIR", "").strip())
+    if not enabled:
+        return False
+    with _VECTOR_RUNTIME_LOCK:
+        if _VECTOR_RUNTIME_STATUS.get("status") in {"warming", "ready"}:
+            return False
+    threading.Thread(target=_warm_vector_retrieval, name="vector-warmup", daemon=True).start()
+    return True
 
 DATABASE_DIR = Path(__file__).resolve().parent.parent / "database"
 

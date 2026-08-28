@@ -107,6 +107,7 @@ ZHIYUQIAO_VECTOR_DB_DIR=/srv/zhiyuqiao/data/vectors
 ZHIYUQIAO_EMBEDDING_MODEL=/srv/zhiyuqiao/models/paraphrase-multilingual-MiniLM-L12-v2
 HF_HUB_OFFLINE=1
 TRANSFORMERS_OFFLINE=1
+ZHIYUQIAO_VECTOR_WARMUP=1
 ```
 
 同步完成后先执行离线验收，再重启网站：

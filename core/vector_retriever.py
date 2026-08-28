@@ -40,39 +40,42 @@ class VectorDB:
     """Singleton for managing Chroma vector database."""
 
     _instance = None
+    _singleton_lock = threading.RLock()
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
+        with cls._singleton_lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance._initialized = False
         return cls._instance
 
     def __init__(self):
-        if self._initialized:
-            return
+        with self._singleton_lock:
+            if self._initialized:
+                return
 
-        # Ensure vector DB directory exists
-        VECTOR_DB_DIR.mkdir(parents=True, exist_ok=True)
+            # Ensure vector DB directory exists
+            VECTOR_DB_DIR.mkdir(parents=True, exist_ok=True)
 
-        # Initialize Chroma client
-        self.client = chromadb.PersistentClient(
-            path=str(VECTOR_DB_DIR),
-            settings=chromadb.Settings(
-                anonymized_telemetry=False,
-                allow_reset=True,
+            # Initialize Chroma client
+            self.client = chromadb.PersistentClient(
+                path=str(VECTOR_DB_DIR),
+                settings=chromadb.Settings(
+                    anonymized_telemetry=False,
+                    allow_reset=True,
+                )
             )
-        )
 
-        # Initialize embedding model
-        logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
-        self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+            # Initialize embedding model
+            logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
+            self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
 
-        # Get or create collections
-        self.collections = {}
-        self._init_collections()
+            # Get or create collections
+            self.collections = {}
+            self._init_collections()
 
-        self._initialized = True
-        logger.info("VectorDB initialized successfully")
+            self._initialized = True
+            logger.info("VectorDB initialized successfully")
 
     def _init_collections(self):
         """Initialize all knowledge domain collections."""

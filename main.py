@@ -45,7 +45,11 @@ from core.account_profiles import (
 from core.assistant_service import list_assistant_skills, run_assistant_turn, run_assistant_turn_stream
 from core.content_catalog import get_knowledge_stats
 from core.db import get_db_session
-from core.retriever import get_haipai_source_cards
+from core.retriever import (
+    get_haipai_source_cards,
+    get_retrieval_runtime_status,
+    start_vector_warmup,
+)
 from core.web_security import (
     CSRF_COOKIE_NAME,
     SlidingWindowLimiter,
@@ -63,6 +67,7 @@ STATIC_DIR = PROJECT_ROOT / "static"
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     initialize_profile_store()
+    start_vector_warmup()
     yield
 
 
@@ -794,4 +799,9 @@ async def readiness():
             raise RuntimeError("knowledge catalog is empty")
     except Exception:
         return JSONResponse({"status": "not_ready", "service": "zhiyuqiao"}, status_code=503)
-    return {"status": "ready", "service": "zhiyuqiao", "knowledge_records": stats["total"]}
+    return {
+        "status": "ready",
+        "service": "zhiyuqiao",
+        "knowledge_records": stats["total"],
+        "retrieval": get_retrieval_runtime_status(),
+    }
