@@ -36,6 +36,10 @@ EMBEDDING_MODEL = os.getenv(
     "ZHIYUQIAO_EMBEDDING_MODEL",
     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
 )
+VECTOR_DYNAMIC_QUANTIZATION = os.getenv(
+    "ZHIYUQIAO_DYNAMIC_QUANTIZATION",
+    "0",
+).strip().lower() in {"1", "true", "yes", "on"}
 VECTOR_SEARCH_TOP_K = 5
 VECTOR_DB_PATH = str(VECTOR_DB_DIR)
 
@@ -83,6 +87,7 @@ def get_config_dict() -> dict:
         "database_dir": str(DATABASE_DIR),
         "vector_db_dir": str(VECTOR_DB_DIR),
         "embedding_model": EMBEDDING_MODEL,
+        "vector_dynamic_quantization": VECTOR_DYNAMIC_QUANTIZATION,
         "vector_search_top_k": VECTOR_SEARCH_TOP_K,
         "cache_max_size": CACHE_MAX_SIZE,
         "cache_ttl_minutes": CACHE_TTL_MINUTES,
