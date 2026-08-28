@@ -86,7 +86,6 @@ button { color: inherit; }
 .story-copy { position: relative; z-index: 1; margin: auto 0; max-width: 600px; }
 .story-copy h1 { margin: 0; font-family: var(--serif); font-size: clamp(44px, 5.1vw, 76px); line-height: 1.14; letter-spacing: -.04em; }
 .story-copy > p:last-child { max-width: 540px; margin: 28px 0 0; color: rgba(255,255,255,.8); font-size: 17px; line-height: 1.9; }
-.story-description span { display: block; text-wrap: pretty; }
 .story-proof { position: relative; z-index: 1; display: flex; gap: 30px; padding-bottom: 72px; }
 .story-proof span { display: grid; gap: 4px; color: rgba(255,255,255,.66); font-size: 12px; }
 .story-proof strong { color: #fff; font: 700 24px "Times New Roman", serif; }
