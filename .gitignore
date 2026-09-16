@@ -3,6 +3,7 @@ __pycache__/
 .env
 .codex
 .codex_work/
+.worktrees/
 .playwright-cli/
 *.pyc
 .DS_Store
