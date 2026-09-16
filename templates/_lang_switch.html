@@ -1,21 +1,27 @@
 {#
   Interface language switcher. Rendered on every page.
 
-  No JavaScript, so it works under the app's Content-Security-Policy without an
-  inline handler. Driven entirely by `lang_options` (from core.i18n.LANG_LABELS),
-  so adding a language needs no change here.
+  Pure <details>/<summary> dropdown: no JavaScript, so it works under the app's
+  Content-Security-Policy without an inline handler. Driven entirely by
+  `lang_options` (from core.i18n.LANG_LABELS), so adding a language needs no
+  change here.
 
   `next` returns the visitor to the page they were on; main._safe_next() rejects
   anything that is not a same-origin relative path.
 #}
 {%- set lang_next = request.url.path ~ ('?' ~ request.url.query if request.url.query else '') -%}
-<div class="lang-switch" role="group" aria-label="{{ t('nav.lang_aria') }}">
-    <span class="lang-globe" aria-hidden="true">🌐</span>
-    {%- for code, label, is_current in lang_options %}
-        {%- if is_current %}
-    <span class="lang-current" aria-current="true">{{ label }}</span>
-        {%- else %}
-    <a class="lang-option" href="/lang/{{ code }}?next={{ lang_next | urlencode }}" hreflang="{{ code }}" lang="{{ code }}">{{ label }}</a>
-        {%- endif %}
-    {%- endfor %}
-</div>
+<details class="lang-switch">
+    <summary class="lang-toggle" aria-label="{{ t('nav.lang_aria') }}">
+        <span class="lang-globe" aria-hidden="true">🌐</span>
+        <span class="lang-toggle-label">{{ t('nav.language') }}</span>
+        <svg class="lang-chevron" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </summary>
+    <div class="lang-menu" role="menu" aria-label="{{ t('nav.lang_aria') }}">
+        {%- for code, label, is_current in lang_options %}
+        <a class="lang-item {% if is_current %}is-current{% endif %}" role="menuitem"{% if is_current %} aria-current="true"{% endif %} href="/lang/{{ code }}?next={{ lang_next | urlencode }}" hreflang="{{ code }}" lang="{{ code }}">
+            <span class="lang-item-label">{{ label }}</span>
+            {%- if is_current %}<span class="lang-check" aria-hidden="true">✓</span>{% endif %}
+        </a>
+        {%- endfor %}
+    </div>
+</details>

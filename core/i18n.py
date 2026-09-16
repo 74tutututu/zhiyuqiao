@@ -49,6 +49,7 @@ CATALOG: dict[str, dict[str, str]] = {
     "nav.account_aria": {"zh": "账户导航", "en": "Account navigation"},
     "nav.teacher_aria": {"zh": "教师账户导航", "en": "Teacher account navigation"},
     "nav.student_aria": {"zh": "学生账户导航", "en": "Student account navigation"},
+    "nav.language": {"zh": "Language", "en": "Language"},
     "nav.lang_aria": {"zh": "语言 / Language", "en": "Language / 语言"},
     # ----------------------------------------------------------- page titles
     "page.register": {"zh": "注册账号", "en": "Create account"},
