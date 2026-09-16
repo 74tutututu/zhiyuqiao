@@ -87,6 +87,7 @@ button { color: inherit; }
 .auth-story-login { background: radial-gradient(circle at 24% 16%, rgba(109,174,172,.35), transparent 28%), linear-gradient(145deg, #173744, #1a5360 56%, #10252d); }
 .story-copy { position: relative; z-index: 1; margin: auto 0; max-width: 600px; }
 .story-copy h1 { margin: 0; font-family: var(--serif); font-size: clamp(44px, 5.1vw, 76px); line-height: 1.14; letter-spacing: -.04em; }
+html[lang="en"] .story-copy h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(36px, 4vw, 60px); font-weight: 400; line-height: 1.24; letter-spacing: 0; word-spacing: .04em; text-wrap: balance; }
 .story-copy > p:last-child { max-width: 540px; margin: 28px 0 0; color: rgba(255,255,255,.8); font-size: 17px; line-height: 1.9; }
 .story-proof { position: relative; z-index: 1; display: flex; gap: 30px; padding-bottom: 72px; }
 .story-proof span { display: grid; gap: 4px; color: rgba(255,255,255,.66); font-size: 12px; }
@@ -103,8 +104,9 @@ button { color: inherit; }
 .auth-heading > p:last-child { margin: 0; color: var(--muted); line-height: 1.7; }
 .auth-footer { margin: 24px 0 0; text-align: center; color: var(--muted); font-size: 14px; }
 .auth-footer a { color: var(--accent); font-weight: 700; }
-.role-entry-note { margin-top: 24px; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--muted); font-size: 13px; line-height: 2; background: #faf9f6; }
-.role-entry-note span { display: inline-block; width: 45px; color: var(--accent); font-weight: 800; }
+.role-entry-note { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 24px 0 0; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--muted); font-size: 13px; line-height: 1.8; background: #faf9f6; }
+.role-entry-note dt { color: var(--accent); font-weight: 800; }
+.role-entry-note dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 
 /* Forms */
 .stack-form { display: flex; flex-direction: column; gap: 20px; }

@@ -28,7 +28,10 @@
                 <label class="field"><span>{{ t('form.password') }}</span><input type="password" name="password" placeholder="{{ t('auth.login.password_placeholder') }}" autocomplete="current-password" required></label>
                 <button class="primary-btn primary-btn-large" type="submit">{{ t('page.login') }} <span>→</span></button>
             </form>
-            <div class="role-entry-note"><span>{{ t('auth.login.role_student') }}</span> {{ t('auth.login.role_student_items') }} <br><span>{{ t('auth.login.role_teacher') }}</span> {{ t('auth.login.role_teacher_items') }}</div>
+            <dl class="role-entry-note">
+                <dt>{{ t('auth.login.role_student') }}</dt><dd>{{ t('auth.login.role_student_items') }}</dd>
+                <dt>{{ t('auth.login.role_teacher') }}</dt><dd>{{ t('auth.login.role_teacher_items') }}</dd>
+            </dl>
             <p class="auth-footer">{{ t('auth.login.footer') }} <a href="/register">{{ t('auth.login.footer_link') }}</a></p>
         </div>
     </section>
