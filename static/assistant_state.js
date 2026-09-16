@@ -141,8 +141,8 @@
         };
       },
       recordAssistantCompletion: function (reply) {
-        reply = normalizeText(reply);
-        return reply ? recordAssistantReply(reply) : false;
+        reply = normalizeText(reply) || '暂时无法完成，请重试。';
+        return recordAssistantReply(reply);
       },
       recordAssistantStop: function (partialReply, stoppedLabel) {
         var label = normalizeText(stoppedLabel) || '已停止生成';

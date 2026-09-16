@@ -118,6 +118,23 @@ test('persists stopped replies as complete user-assistant turns and restores the
   ]);
 });
 
+test('closes pending turns with a valid fallback when completion replies are invalid', () => {
+  const invalidReplies = ['', null, 'x'.repeat(12001)];
+
+  invalidReplies.forEach((reply, index) => {
+    const store = createStore(createMemoryStorage());
+    const controller = createAssistantStateController({ historyStore: store, selectedSkill: 'tool-a' });
+    const question = '无效回复问题 ' + index;
+
+    assert.strictEqual(controller.recordUserMessage(question), true);
+    assert.strictEqual(controller.recordAssistantCompletion(reply), true);
+    assert.deepStrictEqual(store.getHistory('tool-a'), [
+      message('user', question),
+      message('assistant', '暂时无法完成，请重试。')
+    ]);
+  });
+});
+
 test('keeps tool histories isolated when controllers switch tools', () => {
   const store = createStore(createMemoryStorage());
   const toolA = createAssistantStateController({ historyStore: store, selectedSkill: 'tool-a' });
