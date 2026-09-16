@@ -3,11 +3,12 @@
 {% block body %}
 <header class="app-topbar student-topbar">
     <a class="wordmark" href="/student">智语桥 <span>ZHIYUQIAO</span></a>
-    <div class="workspace-switch"><span class="workspace-dot"></span> 学生学习空间</div>
-    <nav class="top-actions" aria-label="学生账户导航">
-        <span class="top-profile"><b>{{ user.display_name }}</b><small>{{ user.student_level_label }}</small></span>
-        <a class="icon-link" href="/settings" aria-label="账号设置">设置</a>
-        <form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="quiet-btn" type="submit">退出</button></form>
+    <div class="workspace-switch"><span class="workspace-dot"></span> {{ t('workspace.student') }}</div>
+    <nav class="top-actions" aria-label="{{ t('nav.student_aria') }}">
+        <span class="top-profile"><b>{{ user.display_name }}</b><small>{{ t('profile.level.' ~ user.student_level) }}</small></span>
+        {% include "_lang_switch.html" %}
+        <a class="icon-link" href="/settings" aria-label="{{ t('nav.settings_aria') }}">{{ t('nav.settings') }}</a>
+        <form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="quiet-btn" type="submit">{{ t('nav.logout') }}</button></form>
     </nav>
 </header>
 
@@ -15,9 +16,9 @@
     <aside class="tool-sidebar student-sidebar">
         <div class="student-profile-card">
             <span class="avatar-ring">{{ user.display_name[:1] }}</span>
-            <div><p>你好，{{ user.display_name }}</p><span>{{ user.student_level_label }} · {{ user.learning_goal_label }}</span></div>
+            <div><p>{{ t('student.greeting', name=user.display_name) }}</p><span>{{ t('profile.level.' ~ user.student_level) }} · {{ t('profile.goal.' ~ user.learning_goal) }}</span></div>
         </div>
-        <div class="sidebar-heading"><p class="kicker">LEARNING TOOLS</p><h2>我的学习工具</h2><span>根据你的中文水平提供讲解和练习</span></div>
+        <div class="sidebar-heading"><p class="kicker">{{ t('student.sidebar.kicker') }}</p><h2>{{ t('student.sidebar.title') }}</h2><span>{{ t('student.sidebar.hint') }}</span></div>
         <div id="skill-list" class="skill-list" role="list">
             {% for skill in skills %}
             <button type="button" class="skill-item {% if loop.first %}active{% endif %}" data-skill-key="{{ skill.key }}" data-skill-label="{{ skill.label }}" data-skill-description="{{ skill.description }}">
@@ -25,49 +26,51 @@
             </button>
             {% endfor %}
         </div>
-        <div class="learning-note"><b>学习提示</b><p>可以用 {{ user.teaching_languages_display }} 提问；回答会参考你的中文水平。</p></div>
+        <div class="learning-note"><b>{{ t('student.note.title') }}</b><p>{{ t('student.note.body', languages=user.teaching_languages_display) }}</p></div>
     </aside>
 
     <section class="workspace-main">
         <section class="workspace-hero student-hero">
             <div class="hero-copy">
-                <p class="kicker kicker-light">在上海，学中文</p>
-                <h1>今天，从一条城市线索开始。</h1>
-                <p>观察建筑、倾听城市语言，用已经掌握的中文完成一次真实交流。</p>
-                <div class="hero-actions"><button class="light-btn" type="button" data-skill-target="culture_explorer" data-topic="外滩与陆家嘴" data-prompt="我想从外滩开始认识上海。请按我的中文水平教我关键词，并给我一个可以完成的小任务。">开始文化探索</button><button class="glass-btn" type="button" data-skill-target="speaking_partner" data-topic="外滩与陆家嘴" data-prompt="和我练习向朋友介绍外滩与陆家嘴，你先问我一个简单问题。">练习开口表达</button></div>
+                <p class="kicker kicker-light">{{ t('student.hero.kicker') }}</p>
+                <h1>{{ t('student.hero.title') }}</h1>
+                <p>{{ t('student.hero.body') }}</p>
+                {# data-prompt stays Chinese: it is sent to the model, whose reply language
+                   follows the account's own explanation-language setting, not the UI locale. #}
+                <div class="hero-actions"><button class="light-btn" type="button" data-skill-target="culture_explorer" data-topic="{{ t('student.topic.bund.title') }}" data-prompt="我想从外滩开始认识上海。请按我的中文水平教我关键词，并给我一个可以完成的小任务。">{{ t('student.hero.cta_explore') }}</button><button class="glass-btn" type="button" data-skill-target="speaking_partner" data-topic="{{ t('student.topic.bund.title') }}" data-prompt="和我练习向朋友介绍外滩与陆家嘴，你先问我一个简单问题。">{{ t('student.hero.cta_speak') }}</button></div>
             </div>
-            <div class="level-card"><span>我的中文</span><strong>{{ user.student_level_label }}</strong><small>{{ user.learning_goal_label }}</small><div id="progress-track" class="progress-track" role="progressbar" aria-label="海派文化学习进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ learning_progress.percent }}"><i id="progress-fill" style="width: {{ learning_progress.percent }}%"></i></div><em id="progress-copy">已完成 {{ learning_progress.completed }} / {{ learning_progress.total }} 条文化线索</em></div>
+            <div class="level-card"><span>{{ t('student.level_card.label') }}</span><strong>{{ t('profile.level.' ~ user.student_level) }}</strong><small>{{ t('profile.goal.' ~ user.learning_goal) }}</small><div id="progress-track" class="progress-track" role="progressbar" aria-label="{{ t('student.progress_aria') }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ learning_progress.percent }}"><i id="progress-fill" style="width: {{ learning_progress.percent }}%"></i></div><em id="progress-copy">{{ t('js.progress', completed=learning_progress.completed, total=learning_progress.total) }}</em></div>
         </section>
 
         <section class="content-section">
-            <div class="section-heading section-heading-row"><div><p class="kicker">EXPLORE SHANGHAI</p><h2>六条海派文化学习线索</h2></div><span class="section-hint">不只是“知道”，还要能用中文表达</span></div>
+            <div class="section-heading section-heading-row"><div><p class="kicker">{{ t('student.topics.kicker') }}</p><h2>{{ t('student.topics.title') }}</h2></div><span class="section-hint">{{ t('student.topics.hint') }}</span></div>
             <div class="student-topic-grid">
                 {% set student_topics = [
-                    ('外滩与陆家嘴','历史 × 现代','观察两岸建筑，说一处不同','我想学习外滩与陆家嘴。请给我适合当前水平的词汇、文化解释和观察任务。'),
-                    ('你好与侬好','普通话 × 沪语','听懂城市里的两种问候','“侬好”是什么意思？什么时候可以说？请给我一个简单练习。'),
-                    ('茶与咖啡','传统 × 日常','用中文表达自己的选择','带我学习上海的茶与咖啡文化，并练习在店里点单。'),
-                    ('上海地铁','路线 × 礼貌','完成一次问路与指路','我要练习在上海地铁问路，请先教我五个有用表达。'),
-                    ('建筑可阅读','材料 × 故事','从一扇门讲一个上海故事','怎样用简单中文描述一栋上海老建筑？'),
-                    ('杨浦滨江','工业 × 更新','看见过去如何进入今天','请带我完成杨浦滨江中文观察任务。')
+                    ('bund','我想学习外滩与陆家嘴。请给我适合当前水平的词汇、文化解释和观察任务。'),
+                    ('greeting','“侬好”是什么意思？什么时候可以说？请给我一个简单练习。'),
+                    ('tea','带我学习上海的茶与咖啡文化，并练习在店里点单。'),
+                    ('metro','我要练习在上海地铁问路，请先教我五个有用表达。'),
+                    ('architecture','怎样用简单中文描述一栋上海老建筑？'),
+                    ('yangpu','请带我完成杨浦滨江中文观察任务。')
                 ] %}
-                {% for title, contrast, task, prompt in student_topics %}<button class="student-topic" type="button" data-skill-target="culture_explorer" data-topic="{{ title }}" data-prompt="{{ prompt }}"><span>{{ '%02d'|format(loop.index) }}</span><div><small>{{ contrast }}</small><b>{{ title }}</b><p>{{ task }}</p></div><i>开始 →</i></button>{% endfor %}
+                {% for slug, prompt in student_topics %}<button class="student-topic" type="button" data-skill-target="culture_explorer" data-topic="{{ t('student.topic.' ~ slug ~ '.title') }}" data-prompt="{{ prompt }}"><span>{{ '%02d'|format(loop.index) }}</span><div><small>{{ t('student.topic.' ~ slug ~ '.contrast') }}</small><b>{{ t('student.topic.' ~ slug ~ '.title') }}</b><p>{{ t('student.topic.' ~ slug ~ '.task') }}</p></div><i>{{ t('student.topics.start') }}</i></button>{% endfor %}
             </div>
         </section>
 
         <section class="assistant-workbench student-workbench">
-            <header class="workbench-header"><div><p class="kicker">LEARNING COMPANION</p><h2 id="current-skill-title">{{ skills[0].label }}</h2><p id="current-skill-description">{{ skills[0].description }}</p></div><span class="live-badge"><i></i> 按 {{ user.student_level_label }} 讲解</span></header>
-            <div id="starter-prompts" class="starter-prompts" aria-label="推荐问题"></div>
+            <header class="workbench-header"><div><p class="kicker">{{ t('student.workbench.kicker') }}</p><h2 id="current-skill-title">{{ skills[0].label }}</h2><p id="current-skill-description">{{ skills[0].description }}</p></div><span class="live-badge"><i></i> {{ t('student.workbench.badge', level=t('profile.level.' ~ user.student_level)) }}</span></header>
+            <div id="starter-prompts" class="starter-prompts" aria-label="{{ t('common.starter_aria') }}"></div>
             <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
-            <div class="composer-card"><label class="sr-only" for="composer-input">向学习伙伴提问</label><textarea id="composer-input" rows="4" maxlength="6000" placeholder="可以用中文或你设置的讲解语言提问。例如：‘侬好’是什么意思？"></textarea><div class="composer-footer"><span id="character-count">0 / 6000</span><div class="action-row"><button id="clear-btn" class="quiet-btn" type="button">清空</button><button id="send-btn" class="send-btn" type="button">发送 <span>↗</span></button></div></div></div>
+            <div class="composer-card"><label class="sr-only" for="composer-input">{{ t('student.composer.label') }}</label><textarea id="composer-input" rows="4" maxlength="6000" placeholder="{{ t('student.composer.placeholder') }}"></textarea><div class="composer-footer"><span id="character-count">0 / 6000</span><div class="action-row"><button id="clear-btn" class="quiet-btn" type="button">{{ t('common.clear') }}</button><button id="send-btn" class="send-btn" type="button">{{ t('common.send') }} <span>↗</span></button></div></div></div>
         </section>
 
         <section class="record-section" aria-labelledby="learning-record-title">
-            <div class="section-heading section-heading-row"><div><p class="kicker">MY LEARNING RECORD</p><h2 id="learning-record-title">我的学习记录</h2></div><span class="section-hint">保存 AI 给出的任务，完成后写下真实收获</span></div>
+            <div class="section-heading section-heading-row"><div><p class="kicker">{{ t('student.record.kicker') }}</p><h2 id="learning-record-title">{{ t('student.record.title') }}</h2></div><span class="section-hint">{{ t('student.record.hint') }}</span></div>
             <div id="student-task-list" class="record-grid" aria-live="polite"></div>
         </section>
     </section>
 </main>
 
-<script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "student", csrfToken: {{ csrf_token | tojson }}, taskRecords: {{ learning_tasks | tojson }}, progress: {{ learning_progress | tojson }} };</script>
+<script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "student", csrfToken: {{ csrf_token | tojson }}, taskRecords: {{ learning_tasks | tojson }}, progress: {{ learning_progress | tojson }}, i18n: {{ ui_strings | tojson }}, locale: {{ js_locale | tojson }} };</script>
 <script src="{{ url_for('static', path='/assistant.js') }}"></script>
 {% endblock %}

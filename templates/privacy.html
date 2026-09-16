@@ -3,11 +3,17 @@
 {% block body %}
 <header class="app-topbar simple-topbar">
     <a class="wordmark" href="/">智语桥 <span>ZHIYUQIAO</span></a>
-    <nav class="top-actions" aria-label="页面导航"><a class="icon-link" href="/">返回</a></nav>
+    <nav class="top-actions" aria-label="{{ t('nav.page_aria') }}">
+        {% include "_lang_switch.html" %}
+        <a class="icon-link" href="/">{{ t('nav.back') }}</a>
+    </nav>
 </header>
 <main id="main-content" class="policy-page">
-    <p class="kicker">PRIVACY &amp; AI</p>
+    <p class="kicker">{{ t('privacy.kicker') }}</p>
     <h1>隐私与 AI 使用说明</h1>
+    {# The policy body is a legal document and is maintained in Chinese only. In any
+       other UI locale we say so plainly rather than shipping an unreviewed translation. #}
+    {% if lang != 'zh' %}<div class="alert alert-error" role="note" lang="en">{{ t('privacy.zh_only_note') }}</div>{% endif %}
     <p class="policy-lead">智语桥用于国际中文学习和教学辅助。请先了解数据如何流转，再决定输入什么内容。</p>
 
     <section><h2>我们保存什么</h2><p>系统保存账号、显示名称、身份、语言偏好和学习或教学画像。当前对话默认仅保存在本次浏览器页面中；只有你主动点击“保存为学习任务”或“保存为教案草稿”时，相应提示词、AI 回复、学习反思或教师修改稿才会进入个人档案。</p></section>

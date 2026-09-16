@@ -2,10 +2,21 @@
     const boot = window.__ZHIYUQIAO__ || {};
     const skills = boot.skills || [];
     const role = boot.role || "teacher";
+
+    // UI strings come from core/i18n.py via the page bootstrap. The second argument is
+    // the Chinese fallback, so this file still reads correctly if i18n is ever absent.
+    const i18n = boot.i18n || {};
+    const locale = boot.locale || "zh-CN";
+    function t(key, fallback, values) {
+        const text = i18n[key] || fallback;
+        if (!values) return text;
+        return text.replace(/\{(\w+)\}/g, (match, name) => (name in values ? String(values[name]) : match));
+    }
+
     const state = {
         skills,
         selectedSkill: skills[0]?.key || "teacher_advisor",
-        activeTopic: "自主探索",
+        activeTopic: t("js.topic.default", "自主探索"),
         history: [],
         loading: false,
         abortController: null,
@@ -97,8 +108,8 @@
     function renderEmptyState() {
         if (!chatMessages || state.history.length) return;
         const copy = role === "student"
-            ? ["从一个问题开始", "你可以用中文或熟悉的语言提问，我会按你的水平解释。"]
-            : ["把教学情境说具体一点", "学习者水平、课堂时长、文化主题和预期产出越清楚，建议越可用。"];
+            ? [t("js.empty.student.title", "从一个问题开始"), t("js.empty.student.body", "你可以用中文或熟悉的语言提问，我会按你的水平解释。")]
+            : [t("js.empty.teacher.title", "把教学情境说具体一点"), t("js.empty.teacher.body", "学习者水平、课堂时长、文化主题和预期产出越清楚，建议越可用。")];
         chatMessages.innerHTML = `<div class="chat-empty"><div><strong>${copy[0]}</strong><span>${copy[1]}</span></div></div>`;
     }
 
@@ -109,14 +120,16 @@
             body: JSON.stringify(body),
         });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.detail || "操作失败");
+        if (!response.ok) throw new Error(payload.detail || t("js.error.generic", "操作失败"));
         return payload;
     }
 
     function formatDate(value) {
-        if (!value) return "刚刚保存";
+        if (!value) return t("js.date.just_saved", "刚刚保存");
         const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? "已保存" : new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
+        return Number.isNaN(date.getTime())
+            ? t("js.date.saved", "已保存")
+            : new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
     }
 
     function updateProgress(progress) {
@@ -126,23 +139,28 @@
         const copy = document.getElementById("progress-copy");
         if (fill) fill.style.width = `${state.progress.percent || 0}%`;
         if (track) track.setAttribute("aria-valuenow", String(state.progress.percent || 0));
-        if (copy) copy.textContent = `已完成 ${state.progress.completed || 0} / ${state.progress.total || 6} 条文化线索`;
+        if (copy) {
+            copy.textContent = t("js.progress", "已完成 {completed} / {total} 条文化线索", {
+                completed: state.progress.completed || 0,
+                total: state.progress.total || 6,
+            });
+        }
     }
 
     function renderTaskRecords() {
         if (!studentTaskList) return;
         if (!state.taskRecords.length) {
-            studentTaskList.innerHTML = '<div class="record-empty"><strong>还没有学习记录</strong><span>完成一次 AI 对话后，点击“保存为学习任务”。</span></div>';
+            studentTaskList.innerHTML = `<div class="record-empty"><strong>${escapeHtml(t("js.tasks.empty_title", "还没有学习记录"))}</strong><span>${escapeHtml(t("js.tasks.empty_body", "完成一次 AI 对话后，点击“保存为学习任务”。"))}</span></div>`;
             return;
         }
         studentTaskList.innerHTML = state.taskRecords.map((task) => {
             const done = task.status === "completed";
             return `<article class="record-card ${done ? "completed" : ""}">
-                <div class="record-card-head"><span>${escapeHtml(task.topic)}</span><em>${done ? "已完成" : "进行中"}</em></div>
+                <div class="record-card-head"><span>${escapeHtml(task.topic)}</span><em>${escapeHtml(done ? t("js.status.completed", "已完成") : t("js.status.in_progress", "进行中"))}</em></div>
                 <h3>${escapeHtml(task.title)}</h3>
                 <p>${escapeHtml(task.prompt)}</p>
-                ${done ? `<blockquote><b>我的收获</b>${escapeHtml(task.reflection || "已完成")}</blockquote>` : `<button class="secondary-btn record-action" type="button" data-complete-task="${escapeHtml(task.id)}">完成任务并写反思</button>
-                <form class="reflection-form" data-reflection-form="${escapeHtml(task.id)}" hidden><label for="reflection-${escapeHtml(task.id)}">我完成了什么、学会了什么？</label><textarea id="reflection-${escapeHtml(task.id)}" maxlength="2000" required></textarea><div><button class="quiet-btn" type="button" data-cancel-reflection>取消</button><button class="primary-btn" type="submit">保存完成记录</button></div></form>`}
+                ${done ? `<blockquote><b>${escapeHtml(t("js.tasks.reflection_label", "我的收获"))}</b>${escapeHtml(task.reflection || t("js.status.completed", "已完成"))}</blockquote>` : `<button class="secondary-btn record-action" type="button" data-complete-task="${escapeHtml(task.id)}">${escapeHtml(t("js.tasks.complete", "完成任务并写反思"))}</button>
+                <form class="reflection-form" data-reflection-form="${escapeHtml(task.id)}" hidden><label for="reflection-${escapeHtml(task.id)}">${escapeHtml(t("js.tasks.reflection_prompt", "我完成了什么、学会了什么？"))}</label><textarea id="reflection-${escapeHtml(task.id)}" maxlength="2000" required></textarea><div><button class="quiet-btn" type="button" data-cancel-reflection>${escapeHtml(t("js.cancel", "取消"))}</button><button class="primary-btn" type="submit">${escapeHtml(t("js.tasks.reflection_save", "保存完成记录"))}</button></div></form>`}
                 <small>${formatDate(task.completed_at || task.created_at)}</small>
             </article>`;
         }).join("");
@@ -151,13 +169,13 @@
     function renderArtifacts() {
         if (!teacherArtifactList) return;
         if (!state.artifacts.length) {
-            teacherArtifactList.innerHTML = '<div class="record-empty"><strong>还没有教案草稿</strong><span>生成教学方案后，点击“保存为教案草稿”。</span></div>';
+            teacherArtifactList.innerHTML = `<div class="record-empty"><strong>${escapeHtml(t("js.artifacts.empty_title", "还没有教案草稿"))}</strong><span>${escapeHtml(t("js.artifacts.empty_body", "生成教学方案后，点击“保存为教案草稿”。"))}</span></div>`;
             return;
         }
         teacherArtifactList.innerHTML = state.artifacts.map((artifact) => `<article class="record-card">
-            <div class="record-card-head"><span>${escapeHtml(artifact.skill_key)}</span><em class="${artifact.review_status === "reviewed" ? "reviewed" : ""}">${artifact.review_status === "reviewed" ? "教师已审核" : "待审核"}</em></div>
+            <div class="record-card-head"><span>${escapeHtml(artifact.skill_key)}</span><em class="${artifact.review_status === "reviewed" ? "reviewed" : ""}">${escapeHtml(artifact.review_status === "reviewed" ? t("js.artifacts.reviewed", "教师已审核") : t("js.artifacts.pending", "待审核"))}</em></div>
             <h3>${escapeHtml(artifact.title)}</h3><p>${escapeHtml(artifact.prompt)}</p>
-            <a class="secondary-btn record-action" href="/teacher/artifacts/${encodeURIComponent(artifact.id)}">编辑、审核与导出</a>
+            <a class="secondary-btn record-action" href="/teacher/artifacts/${encodeURIComponent(artifact.id)}">${escapeHtml(t("js.artifacts.open", "编辑、审核与导出"))}</a>
             <small>${formatDate(artifact.updated_at || artifact.created_at)}</small>
         </article>`).join("");
     }
@@ -168,27 +186,27 @@
         const copyButton = document.createElement("button");
         copyButton.type = "button";
         copyButton.className = "quiet-btn";
-        copyButton.textContent = "复制内容";
+        copyButton.textContent = t("js.copy", "复制内容");
         copyButton.addEventListener("click", async () => {
             try {
                 await navigator.clipboard.writeText(reply);
-                copyButton.textContent = "已复制";
+                copyButton.textContent = t("js.copied", "已复制");
             } catch (_) {
-                copyButton.textContent = "复制失败，请手动选择";
+                copyButton.textContent = t("js.copy_failed", "复制失败，请手动选择");
             }
         });
         const saveButton = document.createElement("button");
         saveButton.type = "button";
         saveButton.className = "primary-btn";
-        saveButton.textContent = role === "student" ? "保存为学习任务" : "保存为教案草稿";
+        saveButton.textContent = role === "student" ? t("js.save.task", "保存为学习任务") : t("js.save.artifact", "保存为教案草稿");
         saveButton.addEventListener("click", async () => {
             saveButton.disabled = true;
-            saveButton.textContent = "正在保存…";
+            saveButton.textContent = t("js.save.saving", "正在保存…");
             try {
                 if (role === "student") {
                     const payload = await postJSON("/api/student/tasks", {
                         topic: state.activeTopic,
-                        title: `${state.activeTopic}学习任务`,
+                        title: t("js.task.title", "{topic}学习任务", { topic: state.activeTopic }),
                         prompt,
                         assistant_reply: reply,
                     });
@@ -198,7 +216,7 @@
                 } else {
                     const skill = state.skills.find((item) => item.key === state.selectedSkill);
                     const payload = await postJSON("/api/teacher/artifacts", {
-                        title: `${state.activeTopic} · ${skill?.label || "教案"}`,
+                        title: `${state.activeTopic} · ${skill?.label || t("js.artifacts.fallback_title", "教案")}`,
                         skill_key: state.selectedSkill,
                         prompt,
                         content: reply,
@@ -206,10 +224,10 @@
                     state.artifacts.unshift(payload.artifact);
                     renderArtifacts();
                 }
-                saveButton.textContent = "已保存";
+                saveButton.textContent = t("js.save.saved", "已保存");
             } catch (error) {
                 saveButton.disabled = false;
-                saveButton.textContent = error.message || "保存失败，请重试";
+                saveButton.textContent = error.message || t("js.save.failed", "保存失败，请重试");
             }
         });
         actions.append(copyButton, saveButton);
@@ -220,9 +238,10 @@
         if (!container || !Array.isArray(sources) || !sources.length) return;
         const section = document.createElement("section");
         section.className = "answer-sources";
-        section.setAttribute("aria-label", "回答依据");
+        const sourcesHeading = t("js.sources.heading", "回答依据");
+        section.setAttribute("aria-label", sourcesHeading);
         const heading = document.createElement("h4");
-        heading.textContent = "回答依据";
+        heading.textContent = sourcesHeading;
         section.appendChild(heading);
         const list = document.createElement("div");
         list.className = "source-card-list";
@@ -235,8 +254,8 @@
                 card.rel = "noopener noreferrer";
             }
             const meta = [source.source_org, source.published_date].filter(Boolean).join(" · ");
-            const status = source.dynamic ? "动态信息 · 使用前复核" : "公开资料 · 已核验";
-            card.innerHTML = `<span>${escapeHtml(source.topic || "海派文化")}</span><strong>${escapeHtml(source.title || source.source || "来源资料")}</strong><small>${escapeHtml(meta)}</small><em>${escapeHtml(status)} ↗</em>`;
+            const status = source.dynamic ? t("js.sources.dynamic", "动态信息 · 使用前复核") : t("js.sources.verified", "公开资料 · 已核验");
+            card.innerHTML = `<span>${escapeHtml(source.topic || t("js.sources.topic_fallback", "海派文化"))}</span><strong>${escapeHtml(source.title || source.source || t("js.sources.title_fallback", "来源资料"))}</strong><small>${escapeHtml(meta)}</small><em>${escapeHtml(status)} ↗</em>`;
             list.appendChild(card);
         });
         section.appendChild(list);
@@ -293,7 +312,7 @@
         if (options.loading) {
             bubble.dataset.loading = "true";
             bubble.setAttribute("role", "status");
-            bubble.innerHTML = "<p>正在组织答案，请稍等……</p>";
+            bubble.innerHTML = `<p>${escapeHtml(t("js.loading", "正在组织答案，请稍等……"))}</p>`;
         }
         wrapper.appendChild(bubble);
         chatMessages.appendChild(wrapper);
@@ -308,8 +327,8 @@
         state.abortController = new AbortController();
         composerInput.value = "";
         updateCharacterCount();
-        sendBtn.innerHTML = "停止生成 <span>■</span>";
-        sendBtn.setAttribute("aria-label", "停止生成回答");
+        sendBtn.innerHTML = `${escapeHtml(t("js.stop", "停止生成"))} <span>■</span>`;
+        sendBtn.setAttribute("aria-label", t("js.stop_aria", "停止生成回答"));
         chatMessages.setAttribute("aria-busy", "true");
         appendMessage("user", text);
         state.history.push({ role: "user", content: text });
@@ -326,9 +345,9 @@
             });
             if (!response.ok) {
                 const payload = await response.json();
-                throw new Error(payload.detail || "请求失败");
+                throw new Error(payload.detail || t("js.request_failed", "请求失败"));
             }
-            if (!response.body) throw new Error("当前浏览器不支持流式回答");
+            if (!response.body) throw new Error(t("js.no_stream", "当前浏览器不支持流式回答"));
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = "";
@@ -340,7 +359,7 @@
                 for (const line of lines) {
                     if (!line.trim()) continue;
                     const event = JSON.parse(line);
-                    if (event.type === "error") throw new Error(event.detail || "请求失败");
+                    if (event.type === "error") throw new Error(event.detail || t("js.request_failed", "请求失败"));
                     if (event.content) {
                         finalReply = event.content;
                         loadingBubble.innerHTML = renderMarkdownLite(finalReply);
@@ -357,18 +376,21 @@
             state.history.push({ role: "assistant", content: finalReply });
         } catch (error) {
             if (error.name === "AbortError") {
-                const stopped = finalReply ? `${finalReply}\n\n---\n已停止生成。` : "已停止生成，你可以调整问题后重试。";
+                const stopped = finalReply
+                    ? `${finalReply}\n\n---\n${t("js.stopped_suffix", "已停止生成。")}`
+                    : t("js.stopped", "已停止生成，你可以调整问题后重试。");
                 loadingBubble.innerHTML = renderMarkdownLite(stopped);
                 if (finalReply) appendResponseActions(loadingBubble, text, finalReply);
             } else {
-                loadingBubble.innerHTML = `<p>暂时无法完成：${escapeHtml(error.message || "系统不可用")}。请稍后重试。</p>`;
+                const reason = escapeHtml(error.message || t("js.unavailable", "系统不可用"));
+                loadingBubble.innerHTML = `<p>${t("js.failed", "暂时无法完成：{message}。请稍后重试。", { message: reason })}</p>`;
             }
             delete loadingBubble.dataset.loading;
         } finally {
             state.loading = false;
             state.abortController = null;
-            sendBtn.innerHTML = "发送 <span>↗</span>";
-            sendBtn.setAttribute("aria-label", "发送消息");
+            sendBtn.innerHTML = `${escapeHtml(t("js.send", "发送"))} <span>↗</span>`;
+            sendBtn.setAttribute("aria-label", t("js.send_aria", "发送消息"));
             chatMessages.removeAttribute("aria-busy");
             composerInput.focus();
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -386,14 +408,14 @@
         const button = event.target.closest(".skill-item");
         if (button) {
             setSkill(button.dataset.skillKey);
-            state.activeTopic = button.dataset.skillLabel || "自主探索";
+            state.activeTopic = button.dataset.skillLabel || t("js.topic.default", "自主探索");
         }
     });
     document.addEventListener("click", (event) => {
         const trigger = event.target.closest("[data-skill-target]");
         if (!trigger) return;
         setSkill(trigger.dataset.skillTarget);
-        state.activeTopic = trigger.dataset.topic || trigger.textContent.trim() || "自主探索";
+        state.activeTopic = trigger.dataset.topic || trigger.textContent.trim() || t("js.topic.default", "自主探索");
         composerInput.value = trigger.dataset.prompt || "";
         updateCharacterCount();
         document.querySelector(".assistant-workbench")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -430,7 +452,7 @@
             renderTaskRecords();
         } catch (error) {
             submitButton.disabled = false;
-            submitButton.textContent = error.message || "保存失败，请重试";
+            submitButton.textContent = error.message || t("js.save.failed", "保存失败，请重试");
         }
     });
     sendBtn?.addEventListener("click", () => {

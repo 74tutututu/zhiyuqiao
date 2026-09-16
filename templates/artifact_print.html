@@ -3,36 +3,37 @@
 {% block body %}
 <header class="app-topbar artifact-topbar">
     <a class="wordmark" href="/teacher">智语桥 <span>ZHIYUQIAO</span></a>
-    <div class="workspace-switch"><span class="workspace-dot"></span> 教案审核与导出</div>
-    <nav class="top-actions artifact-actions" aria-label="教案操作">
-        <a class="quiet-btn" href="/teacher">返回工作台</a>
-        <a class="quiet-btn" href="/teacher/artifacts/{{ artifact.id }}/download">下载 Markdown</a>
-        <button class="primary-btn" type="button" onclick="window.print()">打印 / 导出 PDF</button>
+    <div class="workspace-switch"><span class="workspace-dot"></span> {{ t('artifact.topbar') }}</div>
+    <nav class="top-actions artifact-actions" aria-label="{{ t('artifact.nav_aria') }}">
+        {% include "_lang_switch.html" %}
+        <a class="quiet-btn" href="/teacher">{{ t('artifact.back') }}</a>
+        <a class="quiet-btn" href="/teacher/artifacts/{{ artifact.id }}/download">{{ t('artifact.download') }}</a>
+        <button class="primary-btn" type="button" onclick="window.print()">{{ t('artifact.print') }}</button>
     </nav>
 </header>
 
 <main id="main-content" class="artifact-page">
-    {% if success %}<div class="alert alert-success">修改已保存。审核状态会同步回教师工作台。</div>{% endif %}
+    {% if success %}<div class="alert alert-success">{{ t('artifact.saved') }}</div>{% endif %}
     <header class="artifact-heading">
-        <div><p class="kicker">TEACHING ARTIFACT</p><h1>{{ artifact.title }}</h1></div>
-        <span class="review-pill {% if artifact.review_status == 'reviewed' %}reviewed{% endif %}">{{ '教师已审核' if artifact.review_status == 'reviewed' else 'AI 草稿 · 待审核' }}</span>
+        <div><p class="kicker">{{ t('artifact.kicker') }}</p><h1>{{ artifact.title }}</h1></div>
+        <span class="review-pill {% if artifact.review_status == 'reviewed' %}reviewed{% endif %}">{{ t('artifact.status.reviewed') if artifact.review_status == 'reviewed' else t('artifact.status.draft') }}</span>
     </header>
 
     <section class="artifact-context">
-        <p><b>原始教学需求</b>{{ artifact.prompt }}</p>
-        <p><b>使用说明</b>AI 生成内容仅作为备课起点；涉及文化事实、政策、安全和学习者评价时，请教师复核后使用。</p>
+        <p><b>{{ t('artifact.context.prompt') }}</b>{{ artifact.prompt }}</p>
+        <p><b>{{ t('artifact.context.usage') }}</b>{{ t('artifact.context.usage_body') }}</p>
     </section>
 
     <form class="artifact-editor" method="post" action="/teacher/artifacts/{{ artifact.id }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <label class="field"><span>教案标题</span><input name="title" maxlength="128" required value="{{ artifact.title }}"></label>
-        <label class="field artifact-content-field"><span>教案正文（可直接修改）</span><textarea name="content" rows="30" maxlength="30000" required>{{ artifact.content }}</textarea></label>
+        <label class="field"><span>{{ t('artifact.field.title') }}</span><input name="title" maxlength="128" required value="{{ artifact.title }}"></label>
+        <label class="field artifact-content-field"><span>{{ t('artifact.field.content') }}</span><textarea name="content" rows="30" maxlength="30000" required>{{ artifact.content }}</textarea></label>
         <article class="print-artifact-content">{{ artifact.content }}</article>
-        <fieldset class="field-group"><legend>审核状态</legend><div class="role-selector artifact-status-selector">
-            <label class="role-option"><input type="radio" name="review_status" value="draft" {% if artifact.review_status != 'reviewed' %}checked{% endif %}><span class="role-option-body"><b>继续编辑</b><small>保留为待审核草稿</small></span></label>
-            <label class="role-option"><input type="radio" name="review_status" value="reviewed" {% if artifact.review_status == 'reviewed' %}checked{% endif %}><span class="role-option-body"><b>教师已审核</b><small>确认已核验并完成修改</small></span></label>
+        <fieldset class="field-group"><legend>{{ t('artifact.legend_status') }}</legend><div class="role-selector artifact-status-selector">
+            <label class="role-option"><input type="radio" name="review_status" value="draft" {% if artifact.review_status != 'reviewed' %}checked{% endif %}><span class="role-option-body"><b>{{ t('artifact.status.continue') }}</b><small>{{ t('artifact.status.continue_hint') }}</small></span></label>
+            <label class="role-option"><input type="radio" name="review_status" value="reviewed" {% if artifact.review_status == 'reviewed' %}checked{% endif %}><span class="role-option-body"><b>{{ t('artifact.status.reviewed') }}</b><small>{{ t('artifact.status.reviewed_hint') }}</small></span></label>
         </div></fieldset>
-        <div class="form-actions artifact-form-actions"><button class="primary-btn" type="submit">保存修改</button><button class="secondary-btn" type="button" onclick="window.print()">打印 / 导出 PDF</button></div>
+        <div class="form-actions artifact-form-actions"><button class="primary-btn" type="submit">{{ t('artifact.save') }}</button><button class="secondary-btn" type="button" onclick="window.print()">{{ t('artifact.print') }}</button></div>
     </form>
 </main>
 {% endblock %}

@@ -45,6 +45,19 @@ from core.account_profiles import (
 from core.assistant_service import list_assistant_skills, run_assistant_turn, run_assistant_turn_stream
 from core.content_catalog import get_knowledge_stats
 from core.db import get_db_session
+from core.i18n import (
+    CATALOG,
+    LANG_COOKIE_NAME,
+    LANG_COOKIE_TTL_DAYS,
+    SUPPORTED_LANGS,
+    client_strings,
+    html_lang,
+    js_locale,
+    lang_options,
+    resolve_lang,
+    translate,
+    translator,
+)
 from core.retriever import (
     get_haipai_source_cards,
     get_retrieval_runtime_status,
@@ -136,24 +149,34 @@ class TeacherArtifactCreateRequest(BaseModel):
     content: str = Field(..., min_length=1, max_length=30000)
 
 
-def _theme_choices() -> list[tuple[str, str]]:
-    return [(value, key) for key, value in THEME_LABELS.items()]
+def _choices(labels: dict[str, str], prefix: str, lang: str) -> list[tuple[str, str]]:
+    """`(label, value)` rows for a <select>, with the label localised.
+
+    The Chinese values in `labels` stay the fallback, so an untranslated key
+    still renders Chinese rather than a raw slug.
+    """
+    return [(translate(f"{prefix}.{key}", lang) if f"{prefix}.{key}" in CATALOG else value, key)
+            for key, value in labels.items()]
 
 
-def _teacher_level_choices() -> list[tuple[str, str]]:
-    return [(value, key) for key, value in TEACHER_LEVEL_LABELS.items()]
+def _theme_choices(lang: str) -> list[tuple[str, str]]:
+    return _choices(THEME_LABELS, "profile.theme", lang)
 
 
-def _role_choices() -> list[tuple[str, str]]:
-    return [(value, key) for key, value in ACCOUNT_ROLE_LABELS.items()]
+def _teacher_level_choices(lang: str) -> list[tuple[str, str]]:
+    return _choices(TEACHER_LEVEL_LABELS, "profile.teacher_level", lang)
 
 
-def _student_level_choices() -> list[tuple[str, str]]:
-    return [(value, key) for key, value in STUDENT_LEVEL_LABELS.items()]
+def _role_choices(lang: str) -> list[tuple[str, str]]:
+    return _choices(ACCOUNT_ROLE_LABELS, "profile.role", lang)
 
 
-def _learning_goal_choices() -> list[tuple[str, str]]:
-    return [(value, key) for key, value in LEARNING_GOAL_LABELS.items()]
+def _student_level_choices(lang: str) -> list[tuple[str, str]]:
+    return _choices(STUDENT_LEVEL_LABELS, "profile.level", lang)
+
+
+def _learning_goal_choices(lang: str) -> list[tuple[str, str]]:
+    return _choices(LEARNING_GOAL_LABELS, "profile.goal", lang)
 
 
 def _normalize_form_languages(raw: list[str] | None) -> list[str]:
@@ -167,14 +190,23 @@ def _current_user(request: Request, *, touch: bool = True):
 
 
 def _page_context(request: Request, **kwargs: Any) -> dict[str, Any]:
+    lang = resolve_lang(request)
     context = {
         "request": request,
+        # UI locale. Distinct from `language_options` below, which is the persisted
+        # *AI explanation language* profile field — do not conflate the two.
+        "lang": lang,
+        "t": translator(lang),
+        "html_lang": html_lang(lang),
+        "js_locale": js_locale(lang),
+        "lang_options": lang_options(lang),
+        "ui_strings": client_strings(lang),
         "language_options": LANGUAGE_OPTIONS,
-        "role_choices": _role_choices(),
-        "teacher_level_choices": _teacher_level_choices(),
-        "student_level_choices": _student_level_choices(),
-        "learning_goal_choices": _learning_goal_choices(),
-        "theme_choices": _theme_choices(),
+        "role_choices": _role_choices(lang),
+        "teacher_level_choices": _teacher_level_choices(lang),
+        "student_level_choices": _student_level_choices(lang),
+        "learning_goal_choices": _learning_goal_choices(lang),
+        "theme_choices": _theme_choices(lang),
         "default_theme": DEFAULT_THEME,
         "csrf_token": ensure_csrf_token(request),
         "knowledge_stats": get_knowledge_stats(),
@@ -218,6 +250,33 @@ async def home(request: Request):
     return RedirectResponse(url="/login", status_code=303)
 
 
+def _safe_next(target: str | None) -> str:
+    """Only allow same-origin relative paths, so /lang cannot become an open redirect."""
+    if not target or not target.startswith("/"):
+        return "/"
+    # "//host" and "/\host" are protocol-relative and would leave the site.
+    if target.startswith("//") or target.startswith("/\\"):
+        return "/"
+    return target
+
+
+@app.get("/lang/{code}")
+async def set_language(request: Request, code: str):
+    if code not in SUPPORTED_LANGS:
+        raise HTTPException(status_code=404, detail="Unsupported language.")
+    response = RedirectResponse(url=_safe_next(request.query_params.get("next")), status_code=303)
+    response.set_cookie(
+        LANG_COOKIE_NAME,
+        code,
+        httponly=False,
+        samesite="lax",
+        secure=secure_cookies_enabled(),
+        max_age=LANG_COOKIE_TTL_DAYS * 24 * 60 * 60,
+        path="/",
+    )
+    return response
+
+
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
     current = _current_user(request)
@@ -228,7 +287,7 @@ async def register_page(request: Request):
         "register.html",
         _page_context(
             request,
-            page_title="注册账号",
+            page_title="page.register",
             first_user=(count_users() == 0),
             error="",
             form_data={},
@@ -278,7 +337,7 @@ async def register_submit(request: Request):
             "register.html",
             _page_context(
                 request,
-                page_title="注册账号",
+                page_title="page.register",
                 first_user=(count_users() == 0),
                 error=str(exc),
                 form_data={**form_data, "teaching_languages": teaching_languages},
@@ -302,7 +361,7 @@ async def login_page(request: Request):
         "login.html",
         _page_context(
             request,
-            page_title="登录",
+            page_title="page.login",
             error="",
             identifier="",
         ),
@@ -331,7 +390,7 @@ async def login_submit(request: Request):
             "login.html",
             _page_context(
                 request,
-                page_title="登录",
+                page_title="page.login",
                 error="账号/账号名或密码错误，请重试。",
                 identifier=identifier,
             ),
@@ -375,9 +434,9 @@ async def teacher_workspace(request: Request):
         "teacher_dashboard.html",
         _page_context(
             request,
-            page_title="教师工作台",
+            page_title="page.teacher",
             user=user.to_dict(),
-            skills=list_assistant_skills("teacher"),
+            skills=list_assistant_skills("teacher", lang=resolve_lang(request)),
             artifacts=list_teacher_artifacts(user.user_id),
         ),
     )
@@ -387,7 +446,7 @@ async def teacher_workspace(request: Request):
 async def privacy_page(request: Request):
     return templates.TemplateResponse(
         "privacy.html",
-        _page_context(request, page_title="隐私与 AI 使用说明", user=None),
+        _page_context(request, page_title="page.privacy", user=None),
     )
 
 
@@ -403,9 +462,9 @@ async def student_workspace(request: Request):
         "student_dashboard.html",
         _page_context(
             request,
-            page_title="学习空间",
+            page_title="page.student",
             user=user.to_dict(),
-            skills=list_assistant_skills("student"),
+            skills=list_assistant_skills("student", lang=resolve_lang(request)),
             learning_tasks=list_learning_tasks(user.user_id),
             learning_progress=get_learning_progress(user.user_id),
         ),
@@ -422,7 +481,7 @@ async def settings_page(request: Request):
         "settings.html",
         _page_context(
             request,
-            page_title="账号设置",
+            page_title="page.settings",
             user=user.to_dict(),
             success="",
             error="",
@@ -480,7 +539,7 @@ async def settings_submit(request: Request):
             "settings.html",
             _page_context(
                 request,
-                page_title="账号设置",
+                page_title="page.settings",
                 user=fallback_user,
                 success="",
                 error=str(exc),
@@ -495,7 +554,7 @@ async def settings_submit(request: Request):
         "settings.html",
         _page_context(
             request,
-            page_title="账号设置",
+            page_title="page.settings",
             user=updated.to_dict(),
             success="设置已保存。",
             error="",
@@ -516,7 +575,7 @@ async def api_skills(request: Request):
     user = _current_user(request)
     if user is None:
         raise HTTPException(status_code=401, detail="未登录")
-    return {"skills": list_assistant_skills(user.account_role)}
+    return {"skills": list_assistant_skills(user.account_role, lang=resolve_lang(request))}
 
 
 @app.post("/api/message")
@@ -725,7 +784,7 @@ async def account_delete(request: Request):
             "settings.html",
             _page_context(
                 request,
-                page_title="账号设置",
+                page_title="page.settings",
                 user=user.to_dict(),
                 success="",
                 error=str(exc),

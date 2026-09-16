@@ -5,7 +5,13 @@ from typing import Any
 
 from .account_profiles import AccountProfile
 from .ai_agent import generate_response, generate_response_stream
+from .i18n import CATALOG, DEFAULT_LANG, translate
 from .skills.runtime import execute_skill, execute_skill_stream, render_skill_result
+
+
+def _localized(key: str, lang: str, fallback: str) -> str:
+    """Translate `key`, or keep the skill's own Chinese text if it has no entry."""
+    return translate(key, lang) if key in CATALOG else fallback
 
 
 @dataclass(frozen=True)
@@ -178,7 +184,7 @@ ASSISTANT_SKILLS = (
 _SKILL_INDEX = {item.key: item for item in ASSISTANT_SKILLS}
 
 
-def list_assistant_skills(account_role: str = "teacher") -> list[dict[str, Any]]:
+def list_assistant_skills(account_role: str = "teacher", *, lang: str = DEFAULT_LANG) -> list[dict[str, Any]]:
     resolved_role = "student" if account_role == "student" else "teacher"
     preferred_order = {
         "teacher": [
@@ -198,11 +204,15 @@ def list_assistant_skills(account_role: str = "teacher") -> list[dict[str, Any]]
     return [
         {
             "key": skill.key,
-            "label": skill.label,
-            "description": skill.description,
+            "label": _localized(f"skill.{skill.key}.label", lang, skill.label),
+            "description": _localized(f"skill.{skill.key}.description", lang, skill.description),
+            # `icon` stays untranslated: these are single CJK glyphs used as visual avatars.
             "icon": skill.icon,
             "mode": skill.mode,
-            "starter_prompts": list(skill.starter_prompts),
+            "starter_prompts": [
+                _localized(f"skill.{skill.key}.starter.{index}", lang, prompt)
+                for index, prompt in enumerate(skill.starter_prompts)
+            ],
         }
         for skill in role_skills
     ]

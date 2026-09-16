@@ -163,6 +163,29 @@ button { color: inherit; }
 .top-profile b { font-size: 13px; }.top-profile small { color: var(--muted); font-size: 10px; }
 .text-link { color: var(--accent); font-size: 13px; font-weight: 800; }
 
+/* Interface language switcher (templates/_lang_switch.html) */
+.lang-switch {
+    display: inline-flex; align-items: center; gap: 2px; flex: none;
+    padding: 3px; padding-left: 9px; border: 1px solid var(--line); border-radius: 999px;
+}
+.lang-globe { margin-right: 5px; font-size: 12px; line-height: 1; opacity: .62; }
+.lang-option, .lang-current {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 28px; padding: 4px 11px; border-radius: 999px;
+    font-size: 12px; font-weight: 800; white-space: nowrap;
+}
+.lang-option { color: var(--muted); transition: color .18s, background .18s; }
+.lang-option:hover { color: var(--accent); background: var(--accent-soft); }
+.lang-current { background: var(--accent); color: #fff; }
+
+/* Light-on-dark variant for the two auth pages, which have no topbar. */
+.auth-topline { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.auth-topline .lang-switch { border-color: rgba(255,255,255,.34); }
+.auth-topline .lang-globe { opacity: .8; }
+.auth-topline .lang-option { color: rgba(255,255,255,.76); }
+.auth-topline .lang-option:hover { color: #fff; background: rgba(255,255,255,.18); }
+.auth-topline .lang-current { background: #fff; color: var(--ink); }
+
 /* Role workspaces */
 .workspace-shell { width: min(1660px, 100%); min-height: calc(100vh - 72px); margin: 0 auto; display: grid; grid-template-columns: 320px minmax(0, 1fr); }
 .workspace-shell > * { min-width: 0; }
@@ -331,6 +354,7 @@ body[data-theme="academy_blue"] .message.assistant .message-bubble { background:
 
 @media (max-width: 640px) {
     .wordmark span { display: none; }.app-topbar { min-height: 62px; padding: 10px 14px; }.top-actions { gap: 6px; }.icon-link, .quiet-btn { padding: 7px 10px; }
+    .lang-switch { padding-left: 4px; }.lang-globe { display: none; }.lang-option, .lang-current { min-height: 26px; padding: 3px 8px; font-size: 11px; }
     .auth-story { min-height: 320px; }.story-copy h1 { font-size: 42px; }.story-proof { display: none; }
     .form-grid, .role-selector { grid-template-columns: 1fr; }.auth-heading h2 { font-size: 34px; }
     .workspace-main { padding-inline: 12px; }.workspace-hero { border-radius: 22px; }.hero-copy h1 { font-size: 34px; }.hero-actions { flex-direction: column; align-items: stretch; }.hero-metrics { display: none; }
