@@ -409,11 +409,15 @@
                 chatMessages.scrollTop = chatMessages.scrollHeight;
                 if (done) break;
             }
-            finalReply = finalReply.trim() || "暂时无法完成，请重试。";
+            const completionFallback = "暂时无法完成，请重试。";
+            finalReply = finalReply.trim() || completionFallback;
             assistantController.recordAssistantCompletion(finalReply);
-            loadingBubble.innerHTML = renderMarkdownLite(finalReply);
-            appendSources(loadingBubble, finalSources);
-            appendResponseActions(loadingBubble, text, finalReply);
+            const savedHistory = currentHistory();
+            const savedMessage = savedHistory[savedHistory.length - 1];
+            const savedReply = savedMessage?.role === "assistant" ? savedMessage.content : completionFallback;
+            loadingBubble.innerHTML = renderMarkdownLite(savedReply);
+            if (savedReply !== completionFallback) appendSources(loadingBubble, finalSources);
+            appendResponseActions(loadingBubble, text, savedReply);
             delete loadingBubble.dataset.loading;
             loadingBubble.removeAttribute("role");
         } catch (error) {
