@@ -21,13 +21,21 @@
     roleInputs.forEach((input) => input.addEventListener("change", syncRolePanels));
     function syncPrimaryLanguage() {
         if (!primaryLanguage) return;
-        const enabled = languageInputs.filter((input) => input.checked).map((input) => input.value);
-        Array.from(primaryLanguage.options).forEach((option) => {
-            option.disabled = !enabled.includes(option.value);
-        });
-        if (!enabled.includes(primaryLanguage.value) && enabled.length) primaryLanguage.value = enabled[0];
+        // Choosing a primary language also opts into that explanation language.
+        // Never disable choices merely because their checkbox is not checked yet.
+        const selected = languageInputs.find((input) => input.value === primaryLanguage.value);
+        if (selected) selected.checked = true;
     }
-    languageInputs.forEach((input) => input.addEventListener("change", syncPrimaryLanguage));
+    primaryLanguage?.addEventListener("change", syncPrimaryLanguage);
+    languageInputs.forEach((input) => input.addEventListener("change", () => {
+        if (!primaryLanguage) return;
+        const checked = languageInputs.filter((item) => item.checked);
+        if (checked.length && !checked.some((item) => item.value === primaryLanguage.value)) {
+            primaryLanguage.value = checked[0].value;
+        }
+        syncPrimaryLanguage();
+    }));
+    form.addEventListener("submit", syncPrimaryLanguage);
     syncRolePanels();
     syncPrimaryLanguage();
 })();

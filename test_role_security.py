@@ -78,11 +78,15 @@ if __name__ == "__main__":
                 "learning_goal": "culture_explorer",
                 "theme_name": "china_red",
                 "teaching_languages": ["中文", "English"],
+                "primary_language": "Deutsch",
             },
             follow_redirects=False,
         )
         assert registered.status_code == 303
         assert registered.headers["location"] == "/student"
+        registered_user = client.get("/api/me").json()["user"]
+        assert registered_user["instruction_language"] == "Deutsch"
+        assert "Deutsch" in registered_user["teaching_languages"]
 
         teacher_page = client.get("/teacher", follow_redirects=False)
         assert teacher_page.status_code == 303
@@ -97,12 +101,13 @@ if __name__ == "__main__":
                 "student_level": "hsk3",
                 "learning_goal": "culture_explorer",
                 "theme_name": "china_red",
-                "teaching_languages": ["中文", "English"],
+                "teaching_languages": ["中文"],
                 "primary_language": "English",
             },
         )
         assert language_update.status_code == 200
         assert client.get("/api/me").json()["user"]["instruction_language"] == "English"
+        assert "English" in client.get("/api/me").json()["user"]["teaching_languages"]
 
         denied = client.post(
             "/api/message",

@@ -451,6 +451,8 @@ def register_account(
 
     normalized_languages = list(_normalize_languages(teaching_languages))
     resolved_primary_language = str(primary_language or "").strip()
+    if resolved_primary_language in LANGUAGE_OPTIONS and resolved_primary_language not in normalized_languages:
+        normalized_languages.append(resolved_primary_language)
     if resolved_primary_language not in normalized_languages:
         resolved_primary_language = normalized_languages[0]
     resolved_account_role = _validate_account_role(account_role)
@@ -560,6 +562,8 @@ def update_account_profile(
 
     normalized_languages = list(_normalize_languages(teaching_languages))
     resolved_primary_language = str(primary_language or "").strip()
+    if resolved_primary_language in LANGUAGE_OPTIONS and resolved_primary_language not in normalized_languages:
+        normalized_languages.append(resolved_primary_language)
     if resolved_primary_language not in normalized_languages:
         resolved_primary_language = normalized_languages[0]
     resolved_account_role = _validate_account_role(account_role)

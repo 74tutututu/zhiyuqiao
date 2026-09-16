@@ -487,6 +487,18 @@
         composerInput.focus();
     }
 
+    function focusConversation() {
+        const workbench = document.querySelector(".assistant-workbench, .chat-shell");
+        if (!workbench) return;
+        const navHeight = document.querySelector(".app-topbar")?.getBoundingClientRect().height || 0;
+        workbench.style.scrollMarginTop = `${Math.ceil(navHeight) + 16}px`;
+        workbench.scrollIntoView({
+            behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+            block: "start",
+        });
+        composerInput?.focus({ preventScroll: true });
+    }
+
     skillList?.addEventListener("click", (event) => {
         const button = event.target.closest(".skill-item");
         if (button) {
@@ -495,6 +507,7 @@
                 topic: button.dataset.skillLabel || t("js.topic.default", "自主探索"),
             })) return;
             setSkill(button.dataset.skillKey);
+            focusConversation();
         }
     });
     document.addEventListener("click", (event) => {
@@ -508,8 +521,7 @@
         setSkill(trigger.dataset.skillTarget);
         composerInput.value = assistantController.snapshot().inputPrefill;
         updateCharacterCount();
-        document.querySelector(".assistant-workbench")?.scrollIntoView({ behavior: "smooth", block: "start" });
-        window.setTimeout(() => composerInput.focus(), 350);
+        focusConversation();
     });
     studentTaskList?.addEventListener("click", (event) => {
         const openButton = event.target.closest("[data-complete-task]");

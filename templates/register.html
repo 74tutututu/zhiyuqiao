@@ -83,5 +83,5 @@
         </div>
     </section>
 </main>
-<script src="{{ url_for('static', path='/profile-form.js') }}"></script>
+<script src="{{ url_for('static', path='/profile-form.js') }}?v={{ asset_versions['profile-form.js'] }}"></script>
 {% endblock %}
