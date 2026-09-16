@@ -450,6 +450,7 @@
     }
 
     function clearChat() {
+        if (state.loading) return;
         assistantController.clearCurrentHistory();
         renderHistory();
         composerInput.focus();
