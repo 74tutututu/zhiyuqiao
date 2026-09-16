@@ -32,6 +32,14 @@ function createStore(storage) {
   });
 }
 
+function createController(historyStore, selectedSkill) {
+  return createAssistantStateController({
+    historyStore,
+    selectedSkill,
+    skillKeys: ['tool-a', 'tool-b']
+  });
+}
+
 function test(name, fn) {
   try {
     fn();
@@ -44,7 +52,7 @@ function test(name, fn) {
 
 test('evicts the oldest complete turn before the eleventh request', () => {
   const store = createStore(createMemoryStorage());
-  const controller = createAssistantStateController({ historyStore: store, selectedSkill: 'tool-a' });
+  const controller = createController(store, 'tool-a');
   let index;
 
   for (index = 1; index <= 10; index += 1) {
@@ -64,7 +72,7 @@ test('evicts the oldest complete turn before the eleventh request', () => {
 });
 
 test('blocks both skill-selection entry points without changing state while loading', () => {
-  const controller = createAssistantStateController({ historyStore: createStore(createMemoryStorage()), selectedSkill: 'tool-a' });
+  const controller = createController(createStore(createMemoryStorage()), 'tool-a');
 
   assert.strictEqual(controller.selectFromShortcut('tool-a', {
     loading: false,
@@ -97,7 +105,7 @@ test('blocks both skill-selection entry points without changing state while load
 test('persists stopped replies as complete user-assistant turns and restores them', () => {
   const storage = createMemoryStorage();
   const firstStore = createStore(storage);
-  const first = createAssistantStateController({ historyStore: firstStore, selectedSkill: 'tool-a' });
+  const first = createController(firstStore, 'tool-a');
 
   assert.strictEqual(first.recordUserMessage('请继续'), true);
   assert.strictEqual(first.recordAssistantStop('部分回答', '已停止生成'), true);
@@ -107,7 +115,7 @@ test('persists stopped replies as complete user-assistant turns and restores the
   ]);
 
   const restoredStore = createStore(storage);
-  const restored = createAssistantStateController({ historyStore: restoredStore, selectedSkill: 'tool-a' });
+  const restored = createController(restoredStore, 'tool-a');
   assert.deepStrictEqual(restored.snapshot().history, firstStore.getHistory('tool-a'));
 
   assert.strictEqual(restored.recordUserMessage('空回复'), true);
@@ -123,7 +131,7 @@ test('closes pending turns with a valid fallback when completion replies are inv
 
   invalidReplies.forEach((reply, index) => {
     const store = createStore(createMemoryStorage());
-    const controller = createAssistantStateController({ historyStore: store, selectedSkill: 'tool-a' });
+    const controller = createController(store, 'tool-a');
     const question = '无效回复问题 ' + index;
 
     assert.strictEqual(controller.recordUserMessage(question), true);
@@ -135,10 +143,44 @@ test('closes pending turns with a valid fallback when completion replies are inv
   });
 });
 
+test('closes pending turns when a stopped reply would exceed the storage limit', () => {
+  const store = createStore(createMemoryStorage());
+  const controller = createController(store, 'tool-a');
+
+  assert.strictEqual(controller.recordUserMessage('超长停止回复'), true);
+  assert.strictEqual(controller.recordAssistantStop('a'.repeat(11990), '已停止生成'), true);
+  const history = store.getHistory('tool-a');
+
+  assert.strictEqual(history.length, 2);
+  assert.strictEqual(history[1].role, 'assistant');
+  assert.ok(history[1].content.length <= 12000);
+  assert.ok(history[1].content.endsWith('已停止生成'));
+  assert.strictEqual(controller.recordUserMessage('下一轮仍可发送'), true);
+});
+
+test('rejects empty and unregistered tool keys before creating pending messages', () => {
+  const store = createStore(createMemoryStorage());
+  const emptySkill = createController(store, '');
+  const unknownSkill = createController(store, 'missing-tool');
+  const before = emptySkill.snapshot();
+
+  assert.strictEqual(emptySkill.recordUserMessage('空工具不能发送'), false);
+  assert.strictEqual(unknownSkill.recordUserMessage('未知工具不能发送'), false);
+  assert.deepStrictEqual(emptySkill.buildRequestPayload().history, []);
+  assert.deepStrictEqual(unknownSkill.buildRequestPayload().history, []);
+  assert.strictEqual(emptySkill.selectFromSidebar('missing-tool', { loading: false, topic: '未知' }), false);
+  assert.strictEqual(emptySkill.selectFromShortcut('missing-tool', {
+    loading: false,
+    topic: '未知',
+    prompt: '不应预填'
+  }), false);
+  assert.deepStrictEqual(emptySkill.snapshot(), before);
+});
+
 test('keeps tool histories isolated when controllers switch tools', () => {
   const store = createStore(createMemoryStorage());
-  const toolA = createAssistantStateController({ historyStore: store, selectedSkill: 'tool-a' });
-  const toolB = createAssistantStateController({ historyStore: store, selectedSkill: 'tool-b' });
+  const toolA = createController(store, 'tool-a');
+  const toolB = createController(store, 'tool-b');
 
   assert.strictEqual(toolA.recordUserMessage('A 问题'), true);
   assert.strictEqual(toolA.recordAssistantCompletion('A 回答'), true);
@@ -155,7 +197,7 @@ test('clears only the current tool history', () => {
   const store = createStore(createMemoryStorage());
   append(store, 'tool-a', 'A');
   append(store, 'tool-b', 'B');
-  const controller = createAssistantStateController({ historyStore: store, selectedSkill: 'tool-a' });
+  const controller = createController(store, 'tool-a');
 
   assert.strictEqual(controller.clearCurrentHistory(), true);
   assert.deepStrictEqual(store.getHistory('tool-a'), []);

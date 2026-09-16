@@ -44,12 +44,64 @@
     var inputPrefill = typeof options.inputPrefill === 'string' ? options.inputPrefill : '';
     var pendingUserMessage = null;
     var pendingSkill = null;
+    var hasDeclaredSkillKeys = Array.isArray(options.skillKeys);
+    var declaredSkillKeys = Object.create(null);
+    var discoveredSkillKeys = Object.create(null);
+    var skillIndex;
+
+    if (hasDeclaredSkillKeys) {
+      for (skillIndex = 0; skillIndex < options.skillKeys.length; skillIndex += 1) {
+        if (typeof options.skillKeys[skillIndex] === 'string' && options.skillKeys[skillIndex]) {
+          declaredSkillKeys[options.skillKeys[skillIndex]] = true;
+        }
+      }
+    }
 
     function getHistory(skillKey) {
       if (!historyStore || typeof historyStore.getHistory !== 'function') {
         return [];
       }
       return copyHistory(historyStore.getHistory(skillKey));
+    }
+
+    function isRegisteredSkill(skillKey) {
+      var history;
+      var index;
+      var probeUser = '__assistant_state_probe_user__';
+      var probeAssistant = '__assistant_state_probe_assistant__';
+
+      if (typeof skillKey !== 'string' || !skillKey) {
+        return false;
+      }
+      if (hasDeclaredSkillKeys) {
+        return declaredSkillKeys[skillKey] === true;
+      }
+      if (Object.prototype.hasOwnProperty.call(discoveredSkillKeys, skillKey)) {
+        return discoveredSkillKeys[skillKey];
+      }
+      if (!historyStore || typeof historyStore.appendTurn !== 'function' || typeof historyStore.clear !== 'function') {
+        discoveredSkillKeys[skillKey] = false;
+        return false;
+      }
+
+      history = getHistory(skillKey);
+      if (historyStore.appendTurn(skillKey, probeUser, probeAssistant) !== true) {
+        discoveredSkillKeys[skillKey] = false;
+        return false;
+      }
+      if (historyStore.clear(skillKey) !== true) {
+        discoveredSkillKeys[skillKey] = false;
+        return false;
+      }
+      for (index = 0; index + 1 < history.length; index += 2) {
+        if (historyStore.appendTurn(skillKey, history[index].content, history[index + 1].content) !== true) {
+          discoveredSkillKeys[skillKey] = false;
+          return false;
+        }
+      }
+
+      discoveredSkillKeys[skillKey] = true;
+      return true;
     }
 
     function trimForPendingTurn(skillKey) {
@@ -78,7 +130,7 @@
 
     function selectSkill(skillKey, options, includePrompt) {
       options = options || {};
-      if (options.loading) {
+      if (options.loading || !isRegisteredSkill(skillKey)) {
         return false;
       }
 
@@ -94,7 +146,7 @@
 
     function recordUserMessage(text) {
       text = normalizeText(text);
-      if (!text || pendingUserMessage !== null || !trimForPendingTurn(selectedSkill)) {
+      if (!text || pendingUserMessage !== null || !isRegisteredSkill(selectedSkill) || !trimForPendingTurn(selectedSkill)) {
         return false;
       }
 
@@ -147,7 +199,10 @@
       recordAssistantStop: function (partialReply, stoppedLabel) {
         var label = normalizeText(stoppedLabel) || '已停止生成';
         var partial = normalizeText(partialReply);
-        var reply = partial ? partial + '\n\n---\n' + label : label;
+        var suffix = '\n\n---\n' + label;
+        var reply = partial && suffix.length < MAX_MESSAGE_LENGTH
+          ? partial.slice(0, MAX_MESSAGE_LENGTH - suffix.length) + suffix
+          : label;
 
         return recordAssistantReply(reply);
       },
