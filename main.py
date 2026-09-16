@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Literal
@@ -87,6 +88,11 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="智语桥 ZhiYuQiao", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+templates.env.globals["asset_versions"] = {
+    path.name: hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+    for path in STATIC_DIR.iterdir()
+    if path.is_file() and path.suffix in {".js", ".css"}
+}
 
 LOGIN_LIMITER = SlidingWindowLimiter(limit=6, window_seconds=60)
 MESSAGE_LIMITER = SlidingWindowLimiter(limit=30, window_seconds=60)
@@ -96,6 +102,8 @@ MESSAGE_LIMITER = SlidingWindowLimiter(limit=30, window_seconds=60)
 async def security_middleware(request: Request, call_next):
     token = ensure_csrf_token(request)
     response = await call_next(request)
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers["Cache-Control"] = "no-store"
     if not request.cookies.get(CSRF_COOKIE_NAME):
         response.set_cookie(
             CSRF_COOKIE_NAME,

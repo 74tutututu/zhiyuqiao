@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ t(page_title) }} - 智语桥 Zhiyuqiao</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='/favicon.svg') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}?v={{ asset_versions['app.css'] }}">
 </head>
 <body data-theme="{{ user.theme_name if user else default_theme }}" data-role="{{ user.account_role if user else 'guest' }}">
     <a class="skip-link" href="#main-content">{{ t('nav.skip') }}</a>

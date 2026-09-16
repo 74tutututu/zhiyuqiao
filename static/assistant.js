@@ -17,10 +17,16 @@
         storageKey: `zhiyuqiao:chat-history:v1:${role}:${userId}`,
         skillKeys,
     });
+    const selectionStorageKey = `zhiyuqiao:chat-selection:v1:${role}:${userId}`;
+    let initialSkill = skills[0]?.key || "teacher_advisor";
+    try {
+        const savedSkill = browserStorage?.getItem(selectionStorageKey);
+        if (skillKeys.includes(savedSkill)) initialSkill = savedSkill;
+    } catch (_) { /* Keep the default if storage is unavailable. */ }
     const assistantController = window.ZhiYuQiaoAssistantState.createAssistantStateController({
         historyStore,
-        selectedSkill: skills[0]?.key || "teacher_advisor",
-        topic: "",
+        selectedSkill: initialSkill,
+        topic: skills.find((item) => item.key === initialSkill)?.label || "",
         skillKeys,
     });
 
@@ -308,6 +314,9 @@
         if (!skill) return;
         const snapshot = assistantController.snapshot();
         state.selectedSkill = snapshot.selectedSkill;
+        try {
+            browserStorage?.setItem(selectionStorageKey, state.selectedSkill);
+        } catch (_) { /* The in-memory conversation remains usable. */ }
         if (typeof snapshot.topic === "string" && snapshot.topic) state.activeTopic = snapshot.topic;
         currentSkillTitle.textContent = skill.label;
         currentSkillDescription.textContent = skill.description;
@@ -355,7 +364,12 @@
             renderEmptyState();
             return;
         }
-        history.forEach((message) => appendMessage(message.role, message.content));
+        history.forEach((message, index) => {
+            const bubble = appendMessage(message.role, message.content);
+            if (message.role === "assistant" && history[index - 1]?.role === "user") {
+                appendResponseActions(bubble, history[index - 1].content, message.content);
+            }
+        });
     }
 
     async function sendMessage() {
