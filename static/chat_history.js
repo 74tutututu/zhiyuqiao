@@ -22,7 +22,7 @@
   }
 
   function copyMessage(message) {
-    return { role: message.role, content: message.content };
+    return { role: message.role, content: message.content.trim() };
   }
 
   function normalizeHistory(messages) {
@@ -33,9 +33,12 @@
       return normalized;
     }
 
-    for (index = 0; index + 1 < messages.length && normalized.length < MAX_MESSAGES_PER_TOOL; index += 2) {
+    for (index = 0; index + 1 < messages.length; index += 2) {
       if (isValidMessage(messages[index], 'user') && isValidMessage(messages[index + 1], 'assistant')) {
         normalized.push(copyMessage(messages[index]), copyMessage(messages[index + 1]));
+        while (normalized.length > MAX_MESSAGES_PER_TOOL) {
+          normalized.splice(0, 2);
+        }
       }
     }
 

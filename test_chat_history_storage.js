@@ -102,6 +102,58 @@ test('evicts the earliest complete turn when appending the eleventh turn', () =>
   assert.deepStrictEqual(history[19], message('assistant', 'answer 11'));
 });
 
+test('trims accepted content before retaining and persisting it', () => {
+  const storage = createMemoryStorage();
+  const store = createHistoryStore({ storage, storageKey: 'history', skillKeys: ['tool-a'] });
+
+  assert.strictEqual(store.appendTurn('tool-a', ' '.repeat(15000) + 'question  ', '  answer  '), true);
+  assert.deepStrictEqual(store.getHistory('tool-a'), [message('user', 'question'), message('assistant', 'answer')]);
+  assert.deepStrictEqual(JSON.parse(storage.dump('history'))['tool-a'], [message('user', 'question'), message('assistant', 'answer')]);
+});
+
+test('keeps the latest ten turns when loading more than twenty messages', () => {
+  const loadedHistory = [];
+  for (let index = 1; index <= 11; index += 1) {
+    loadedHistory.push(message('user', 'loaded question ' + index), message('assistant', 'loaded answer ' + index));
+  }
+  const storage = createMemoryStorage({ history: JSON.stringify({ 'tool-a': loadedHistory }) });
+  const store = createHistoryStore({ storage, storageKey: 'history', skillKeys: ['tool-a'] });
+  const history = store.getHistory('tool-a');
+
+  assert.strictEqual(history.length, 20);
+  assert.deepStrictEqual(history[0], message('user', 'loaded question 2'));
+  assert.deepStrictEqual(history[1], message('assistant', 'loaded answer 2'));
+  assert.deepStrictEqual(history[18], message('user', 'loaded question 11'));
+  assert.deepStrictEqual(history[19], message('assistant', 'loaded answer 11'));
+});
+
+test('keeps in-memory history when storage access throws', () => {
+  function storageError(name) {
+    const error = new Error(name);
+    error.name = name;
+    return error;
+  }
+  const readDenied = {
+    getItem() { throw storageError('SecurityError'); },
+    setItem() { throw storageError('QuotaExceededError'); }
+  };
+  const readDeniedStore = createHistoryStore({ storage: readDenied, storageKey: 'history', skillKeys: ['tool-a'] });
+
+  assert.strictEqual(readDeniedStore.appendTurn('tool-a', 'question', 'answer'), true);
+  assert.deepStrictEqual(readDeniedStore.getHistory('tool-a'), [message('user', 'question'), message('assistant', 'answer')]);
+  assert.strictEqual(readDeniedStore.persist(), false);
+
+  const writeDenied = {
+    getItem() { return null; },
+    setItem() { throw storageError('QuotaExceededError'); }
+  };
+  const writeDeniedStore = createHistoryStore({ storage: writeDenied, storageKey: 'history', skillKeys: ['tool-a'] });
+
+  assert.strictEqual(writeDeniedStore.appendTurn('tool-a', 'question', 'answer'), true);
+  assert.deepStrictEqual(writeDeniedStore.getHistory('tool-a'), [message('user', 'question'), message('assistant', 'answer')]);
+  assert.strictEqual(writeDeniedStore.persist(), false);
+});
+
 test('clears only the selected tool history', () => {
   const store = createHistoryStore({ storage: createMemoryStorage(), storageKey: 'history', skillKeys: ['tool-a', 'tool-b'] });
   append(store, 'tool-a', 'A');
