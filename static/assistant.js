@@ -60,6 +60,19 @@
     const characterCount = document.getElementById("character-count");
     const sendBtn = document.getElementById("send-btn");
     const clearBtn = document.getElementById("clear-btn");
+    const responseLanguage = document.getElementById("response-language");
+    const languageStorageKey = `zhiyuqiao:reply-language:v1:${role}:${userId}`;
+    if (responseLanguage) {
+        try {
+            const saved = browserStorage?.getItem(languageStorageKey);
+            if (Array.from(responseLanguage.options).some((option) => option.value === saved)) {
+                responseLanguage.value = saved;
+            }
+        } catch (_) { /* Default to matching the question if storage is unavailable. */ }
+        responseLanguage.addEventListener("change", () => {
+            try { browserStorage?.setItem(languageStorageKey, responseLanguage.value); } catch (_) { /* Still usable in memory. */ }
+        });
+    }
     const studentTaskList = document.getElementById("student-task-list");
     const teacherArtifactList = document.getElementById("teacher-artifact-list");
 
@@ -278,8 +291,9 @@
         sources.forEach((source) => {
             const card = document.createElement("a");
             card.className = "source-card";
-            card.href = source.source_url || "#";
-            if (source.source_url) {
+            const sourceUrl = /^https?:\/\//i.test(source.source_url || "") ? source.source_url : "";
+            card.href = sourceUrl || "#";
+            if (sourceUrl) {
                 card.target = "_blank";
                 card.rel = "noopener noreferrer";
             }
@@ -367,6 +381,7 @@
         history.forEach((message, index) => {
             const bubble = appendMessage(message.role, message.content);
             if (message.role === "assistant" && history[index - 1]?.role === "user") {
+                appendSources(bubble, message.sources);
                 appendResponseActions(bubble, history[index - 1].content, message.content);
             }
         });
@@ -379,6 +394,7 @@
         const requestPayload = assistantController.buildRequestPayload();
         const requestSkill = requestPayload.skill_key;
         state.loading = true;
+        if (responseLanguage) responseLanguage.disabled = true;
         state.abortController = new AbortController();
         composerInput.value = "";
         updateCharacterCount();
@@ -394,7 +410,7 @@
             const response = await fetch("/api/message/stream", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "X-CSRF-Token": boot.csrfToken || "" },
-                body: JSON.stringify({ skill_key: requestSkill, text, history: requestPayload.history }),
+                body: JSON.stringify({ skill_key: requestSkill, text, history: requestPayload.history, response_language: responseLanguage?.value || "auto" }),
                 signal: state.abortController.signal,
             });
             if (!response.ok) {
@@ -425,7 +441,7 @@
             }
             const completionFallback = "暂时无法完成，请重试。";
             finalReply = finalReply.trim() || completionFallback;
-            assistantController.recordAssistantCompletion(finalReply);
+            assistantController.recordAssistantCompletion(finalReply, finalSources);
             const savedHistory = currentHistory();
             const savedMessage = savedHistory[savedHistory.length - 1];
             const savedReply = savedMessage?.role === "assistant" ? savedMessage.content : completionFallback;
@@ -454,6 +470,7 @@
             delete loadingBubble.dataset.loading;
         } finally {
             state.loading = false;
+            if (responseLanguage) responseLanguage.disabled = false;
             state.abortController = null;
             sendBtn.innerHTML = `${escapeHtml(t("js.send", "发送"))} <span>↗</span>`;
             sendBtn.setAttribute("aria-label", t("js.send_aria", "发送消息"));

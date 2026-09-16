@@ -270,6 +270,11 @@ body[data-theme="academy_blue"] .tool-sidebar { background: #e5edf1; }
 .message.assistant .message-bubble { border: 1px solid var(--line); border-bottom-left-radius: 4px; background: #f7f4ee; }
 body[data-theme="academy_blue"] .message.assistant .message-bubble { background: #edf4f7; }
 .composer-card { padding: 15px; border: 1px solid var(--line-strong); border-radius: 18px; background: var(--paper-strong); transition: border-color .18s, box-shadow .18s; }
+.reply-language-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 16px 0 12px; font-size: 13px; }
+.reply-language-row label { font-weight: 700; }
+.reply-language-row select { width: auto; max-width: 100%; min-height: 38px; padding: 7px 30px 7px 10px; border: 1px solid var(--line-strong); border-radius: 10px; color: var(--ink); background-color: var(--paper-strong); font: inherit; }
+.reply-language-row > span { color: var(--muted); font-size: 12px; }
+.reply-language-row select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .composer-card:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 8%, transparent); }
 .composer-card textarea { width: 100%; min-height: 90px; resize: vertical; padding: 4px; border: 0; outline: 0; background: transparent; color: var(--ink); line-height: 1.7; }
 .composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding-top: 10px; border-top: 1px solid var(--line); }

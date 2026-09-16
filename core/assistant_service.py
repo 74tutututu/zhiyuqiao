@@ -171,8 +171,8 @@ ASSISTANT_SKILLS = (
         roles=("student",),
         mode="advisor",
         prompt_prefix=(
-            "你是智语桥的海派文化学习伙伴。请根据学习者中文水平，用清晰、友好、不过度困难的中文回答；"
-            "围绕上海真实文化场景解释关键词与背景，区分可核验事实和文化解释，并设计一个能在现实中完成的小任务。"
+            "你是智语桥的海派文化学习伙伴。请用清晰、友好的语言回应，中文例句应符合学习者水平；"
+            "用户询问文化或请求探索任务时，围绕上海真实文化场景解释关键词与背景，区分可核验事实和文化解释，按需给出实践任务。"
             "涉及票价、开放时间、交通班次等动态信息时，不要凭记忆给出确定数字，应提示学习者以场馆或运营方最新公告为准。"
         ),
         starter_prompts=(
@@ -189,7 +189,7 @@ ASSISTANT_SKILLS = (
         roles=("student",),
         mode="advisor",
         prompt_prefix=(
-            "你是国际中文学习伙伴。请按学习者当前水平解释，先给直接答案，再给简短例句和一个小练习；"
+            "你是国际中文学习伙伴。先自然回应用户；遇到语言学习问题时，按学习者当前水平解释，按需给简短例句和练习；"
             "不要使用明显超出学习者水平且未解释的词语。"
         ),
         starter_prompts=(
@@ -205,8 +205,8 @@ ASSISTANT_SKILLS = (
         roles=("student",),
         mode="advisor",
         prompt_prefix=(
-            "你是中文情景口语陪练。请先说明场景和双方角色，每轮只提出一个适合学习者水平的问题，"
-            "根据回答给简短纠正和更自然说法，再继续对话。"
+            "你是中文情景口语陪练。用户要求开始练习时，先说明场景和双方角色，每轮只提出一个适合学习者水平的问题，"
+            "根据回答给简短纠正和更自然说法，再继续对话。问候或一般咨询应自然回应，不要擅自开始角色扮演。"
         ),
         starter_prompts=(
             "和我练习在咖啡店点单，你做店员",
@@ -291,6 +291,7 @@ def run_assistant_turn(
     text: str,
     profile: AccountProfile,
     history: list[dict[str, Any]] | None = None,
+    response_language: str = "auto",
 ) -> str:
     resolved_skill_key = str(skill_key or "").strip()
     user_text = str(text or "").strip()
@@ -312,6 +313,7 @@ def run_assistant_turn(
             hsk_level=profile.student_level_label if profile.is_student else "自动判断",
             account_id=profile.account_id,
             system_extension=skill.prompt_prefix,
+            response_language=response_language,
         )
 
     runtime_key = skill.runtime_key or resolved_skill_key
@@ -332,6 +334,7 @@ def run_assistant_turn_stream(
     text: str,
     profile: AccountProfile,
     history: list[dict[str, Any]] | None = None,
+    response_language: str = "auto",
 ):
     """Yield cumulative, display-ready text for a role-authorized assistant turn."""
     resolved_skill_key = str(skill_key or "").strip()
@@ -354,6 +357,7 @@ def run_assistant_turn_stream(
             hsk_level=profile.student_level_label if profile.is_student else "自动判断",
             account_id=profile.account_id,
             system_extension=skill.prompt_prefix,
+            response_language=response_language,
         )
         return
 

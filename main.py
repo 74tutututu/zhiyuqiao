@@ -44,6 +44,7 @@ from core.account_profiles import (
     update_account_profile,
 )
 from core.assistant_service import list_assistant_skills, run_assistant_turn, run_assistant_turn_stream
+from core.response_language import ResponseLanguage
 from core.content_catalog import get_knowledge_stats
 from core.db import get_db_session
 from core.i18n import (
@@ -137,6 +138,7 @@ class AssistantMessageRequest(BaseModel):
     skill_key: str = Field(default="teacher_advisor", description="当前选择的 skill")
     text: str = Field(..., min_length=1, max_length=6000, description="用户输入")
     history: list[ChatMessage] = Field(default_factory=list, max_length=20, description="当前会话历史")
+    response_language: ResponseLanguage = "auto"
 
 
 class LearningTaskCreateRequest(BaseModel):
@@ -608,6 +610,7 @@ async def api_message(request: Request, payload: AssistantMessageRequest):
             text=payload.text,
             profile=user,
             history=[item.model_dump() for item in payload.history],
+            response_language=payload.response_language,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -650,6 +653,7 @@ async def api_message_stream(request: Request, payload: AssistantMessageRequest)
                 text=payload.text,
                 profile=user,
                 history=[item.model_dump() for item in payload.history],
+                response_language=payload.response_language,
             ):
                 yield json.dumps({"type": "content", "content": latest}, ensure_ascii=False) + "\n"
             sources = get_haipai_source_cards(payload.text) if payload.skill_key in {"culture_explorer", "haipai_lesson_lab", "bridge_lesson_design"} else []

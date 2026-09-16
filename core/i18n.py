@@ -1,9 +1,8 @@
 """Interface localisation for the web workspace.
 
-Scope note: this module localises the **interface chrome only**. The AI reply
-language stays driven by the account's own ``teaching_languages`` /
-``primary_language`` profile fields, which ``core/ai_agent.py`` interpolates
-into the system prompt. Never route a UI locale into those prompts.
+This module localises interface text and visible suggested questions. Reply
+language is selected separately in the composer (auto, explicit, or profile).
+Changing the interface language does not override that choice.
 
 Adding a language is a data-only change: add the code to ``LANG_LABELS``,
 ``HTML_LANG`` and ``JS_LOCALE``, then fill in the new column in ``CATALOG``.
@@ -39,6 +38,26 @@ SUPPORTED_LANGS = tuple(LANG_LABELS)
 
 # key -> lang -> text. Chinese is the source of truth; ``en`` may be absent.
 CATALOG: dict[str, dict[str, str]] = {
+    "student.prompt.explore": {"zh": "我想从外滩开始认识上海。请按我的中文水平教我关键词，并给我一个可以完成的小任务。", "en": "I'd like to start exploring Shanghai at the Bund. Teach me a few useful Chinese words at my level and suggest a small task I can do there."},
+    "student.prompt.speak": {"zh": "和我练习向朋友介绍外滩与陆家嘴，你先问我一个简单问题。", "en": "Help me practise introducing the Bund and Lujiazui to a friend in Chinese. Start by asking me one simple question."},
+    "student.prompt.bund": {"zh": "我想学习外滩与陆家嘴。请给我适合当前水平的词汇、文化解释和观察任务。", "en": "I'd like to learn about the Bund and Lujiazui. Give me Chinese vocabulary at my level, explain the cultural context, and suggest an observation task."},
+    "student.prompt.greeting": {"zh": "“侬好”是什么意思？什么时候可以说？请给我一个简单练习。", "en": "What does ‘侬好’ mean, and when can I use it? Give me a simple exercise."},
+    "student.prompt.tea": {"zh": "带我学习上海的茶与咖啡文化，并练习在店里点单。", "en": "Introduce me to Shanghai's tea and coffee culture, and help me practise ordering in Chinese."},
+    "student.prompt.metro": {"zh": "我要练习在上海地铁问路，请先教我五个有用表达。", "en": "I'd like to practise asking for directions on the Shanghai metro. Teach me five useful Chinese phrases first."},
+    "student.prompt.architecture": {"zh": "怎样用简单中文描述一栋上海老建筑？", "en": "How can I describe an old Shanghai building in simple Chinese?"},
+    "student.prompt.yangpu": {"zh": "请带我完成杨浦滨江中文观察任务。", "en": "Guide me through a Chinese observation task at Yangpu Riverside."},
+    "teacher.prompt.lesson": {"zh": "为HSK2学习者设计一节30分钟的外滩与陆家嘴对比课，包含文化事实核验、语言支架和形成性评价。", "en": "Design a 30-minute lesson comparing the Bund and Lujiazui for HSK 2 learners, with cultural fact-checking, language support and formative assessment."},
+    "teacher.prompt.task": {"zh": "把杨浦滨江工业遗产设计成一项可在现场完成的小组中文任务。", "en": "Design an on-site group Chinese task based on the industrial heritage of Yangpu Riverside."},
+    "teacher.prompt.bund": {"zh": "为HSK1—2学习者设计外滩与陆家嘴对比观察任务。", "en": "Design an observation task comparing the Bund and Lujiazui for HSK 1–2 learners."},
+    "teacher.prompt.greeting": {"zh": "设计普通话与沪语问候的跨文化微课。", "en": "Design a short cross-cultural lesson on greetings in Mandarin and Shanghainese."},
+    "teacher.prompt.tea": {"zh": "设计茶与咖啡主题的中文交际活动。", "en": "Design a Chinese communication activity about tea and coffee."},
+    "teacher.prompt.metro": {"zh": "设计上海地铁问路与公共文明任务。", "en": "Design a task on asking for directions and considerate behaviour on the Shanghai metro."},
+    "teacher.prompt.architecture": {"zh": "把建筑可阅读设计成中级中文项目。", "en": "Design an intermediate Chinese project about discovering the stories behind Shanghai's buildings."},
+    "teacher.prompt.yangpu": {"zh": "把杨浦滨江工业遗产转化为HSK3—4口语任务。", "en": "Design an HSK 3–4 speaking task based on the industrial heritage of Yangpu Riverside."},
+    "chat.reply_language": {"zh": "回答语言", "en": "Reply language"},
+    "chat.reply_auto": {"zh": "与提问语言一致", "en": "Match my question"},
+    "chat.reply_profile": {"zh": "使用账号设置", "en": "Use account preference"},
+    "chat.reply_hint": {"zh": "适用于之后的回答；中文例句和译文保留所需语言。", "en": "Applies to new replies. Examples and translations keep their intended language."},
     # ---------------------------------------------------------------- chrome
     "nav.skip": {"zh": "跳到主要内容", "en": "Skip to main content"},
     "nav.settings": {"zh": "设置", "en": "Settings"},
@@ -101,8 +120,8 @@ CATALOG: dict[str, dict[str, str]] = {
     "form.teacher_level": {"zh": "教师经验", "en": "Teaching experience"},
     "form.primary_language": {"zh": "首选讲解语言", "en": "Preferred explanation language"},
     "form.primary_language_hint": {
-        "zh": "AI 会优先使用它解释；中文例句仍保留中文。",
-        "en": "The AI explains in this language; Chinese examples stay in Chinese.",
+        "zh": "在对话中选择“使用账号设置”时生效；默认回答语言跟随提问。",
+        "en": "Used when you choose ‘Use account preference’ in chat. Replies match your question by default.",
     },
     "form.theme": {"zh": "界面主题", "en": "Interface theme"},
     # ----------------------------------------------------------------- login

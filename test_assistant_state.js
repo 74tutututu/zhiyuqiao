@@ -204,4 +204,22 @@ test('clears only the current tool history', () => {
   assert.deepStrictEqual(store.getHistory('tool-b'), [message('user', 'question B'), message('assistant', 'answer B')]);
 });
 
+test('restores source cards across switches and history trimming but excludes them from model history', () => {
+  const store = createStore(createMemoryStorage());
+  const controller = createController(store, 'tool-a');
+  for (let index = 0; index < 11; index += 1) {
+    controller.recordUserMessage('question ' + index);
+    controller.recordAssistantCompletion('answer ' + index, [{ title: 'source ' + index }]);
+  }
+  controller.selectFromSidebar('tool-b', { loading: false });
+  controller.selectFromSidebar('tool-a', { loading: false });
+  const history = controller.snapshot().history;
+  assert.strictEqual(history.length, 20);
+  assert.strictEqual(history[1].sources[0].title, 'source 1');
+  assert.strictEqual(history[19].sources[0].title, 'source 10');
+  history[19].sources[0].title = 'mutated';
+  assert.strictEqual(controller.snapshot().history[19].sources[0].title, 'source 10');
+  assert.ok(controller.buildRequestPayload().history.every((message) => !message.sources));
+});
+
 console.log('All assistant state controller tests passed.');

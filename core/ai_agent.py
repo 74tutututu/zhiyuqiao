@@ -6,6 +6,7 @@ from .account_profiles import get_teacher_profile
 from .llm_client import DEEPSEEK_MODEL, client
 from .retriever import get_relevant_info
 from .teaching_context import analyze_teaching_context
+from .response_language import reply_language_policy
 
 REVIEW_NOTICE = "\n\n---\n⚠️ **人工审核提示**：本内容由 AI 生成，涉及具体教学决策或政策解读时，请结合实际教学环境及官方最新文件进行核实。"
 MAX_USER_INPUT_CHARS = 6000
@@ -18,10 +19,11 @@ TEACHER_ROLE_GUIDANCE = {
 }
 
 
-def _build_system_prompt(local_context, teacher_profile, teaching_context, system_extension=""):
+def _build_system_prompt(local_context, teacher_profile, teaching_context, system_extension="", response_language="auto"):
     """构建 System Prompt。"""
     knowledge_block = f"<knowledge_context>\n{local_context}\n</knowledge_context>"
     module_guidance = str(system_extension or "").strip()
+    language_policy = reply_language_policy(response_language, teacher_profile.instruction_language)
     module_block = (
         f"\n## 当前功能模块\n{module_guidance}\n"
         if module_guidance
@@ -48,9 +50,9 @@ def _build_system_prompt(local_context, teacher_profile, teaching_context, syste
 - 可用讲解语言：{teacher_profile.teaching_languages_display}
 
 ## 回答准则
-- 先直接回答，再解释关键词和文化背景，最后给一个学习者能完成的小练习或真实交际任务。
+- 先直接回应；仅在用户有学习或实践需求时，再补充关键词、文化背景和合适的小练习。问候不必附加教学任务。
 - 严格控制在学习者当前中文水平；必须使用较难词语时，补充拼音或简明解释。
-- 主要使用 {teacher_profile.instruction_language} 讲解；中文例句可以保留中文。
+- 讲解语言遵循下方“本轮回答语言”规则；中文例句可以保留中文。
 - 将可核验事实、文化解释和个人建议明确区分。
 - 涉及票价、开放时间、线路、政策等动态信息时，不给出未经核验的确定数字，提示查看官方最新信息。
 - 不声称学习者已完成未实际提交的任务，不虚构来源、经历或用户数据。
@@ -59,6 +61,7 @@ def _build_system_prompt(local_context, teacher_profile, teaching_context, syste
 
 {conversation_rules}
 {module_block}
+{language_policy}
 
 ## 本地参考资料
 {knowledge_block}
@@ -90,7 +93,7 @@ def _build_system_prompt(local_context, teacher_profile, teaching_context, syste
 - 仅回答与国际中文教育数字化教学相关的问题。
 - 遵循地域适配优先和开源工具优先原则。
 - 拒绝涉及宗教/政治敏感内容。
-- 主要使用 {teacher_profile.instruction_language} 回答；如用户明确要求其他目标语言，优先服从用户要求。
+- 回答语言遵循下方“本轮回答语言”规则。
 - 当前账号可使用的教学语言包括：{teacher_profile.teaching_languages_display}。
 - 如需展示中文例句、词语或句型，可以保留中文并做对应说明。
 - {role_guidance}
@@ -101,6 +104,7 @@ def _build_system_prompt(local_context, teacher_profile, teaching_context, syste
 
 {conversation_rules}
 {module_block}
+{language_policy}
 
 ## 本地参考资料
 {knowledge_block}
@@ -139,6 +143,7 @@ def generate_response(
     hsk_level="自动判断",
     account_id=None,
     system_extension="",
+    response_language="auto",
 ):
     """非流式生成回复（兼容旧调用）"""
     try:
@@ -161,6 +166,7 @@ def generate_response(
         teacher_profile,
         teaching_context,
         system_extension=system_extension,
+        response_language=response_language,
     )
     messages = _build_messages(system_prompt, user_input, history)
 
@@ -183,6 +189,7 @@ def generate_response_stream(
     cancel_event=None,
     account_id=None,
     system_extension="",
+    response_language="auto",
 ):
     """流式生成回复 - 逐步 yield 累积文本，支持通过 cancel_event 中止"""
     try:
@@ -205,6 +212,7 @@ def generate_response_stream(
         teacher_profile,
         teaching_context,
         system_extension=system_extension,
+        response_language=response_language,
     )
     messages = _build_messages(system_prompt, user_input, history)
 

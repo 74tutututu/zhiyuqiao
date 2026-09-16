@@ -14,7 +14,11 @@
   var MAX_MESSAGE_LENGTH = 12000;
 
   function copyMessage(message) {
-    return { role: message.role, content: message.content };
+    var result = { role: message.role, content: message.content };
+    if (message.role === 'assistant' && Array.isArray(message.sources)) {
+      result.sources = message.sources.map(function (source) { return Object.assign({}, source); });
+    }
+    return result;
   }
 
   function copyHistory(history) {
@@ -94,7 +98,7 @@
         return false;
       }
       for (index = 0; index + 1 < history.length; index += 2) {
-        if (historyStore.appendTurn(skillKey, history[index].content, history[index + 1].content) !== true) {
+        if (historyStore.appendTurn(skillKey, history[index].content, history[index + 1].content, history[index + 1].sources) !== true) {
           discoveredSkillKeys[skillKey] = false;
           return false;
         }
@@ -121,7 +125,7 @@
       }
 
       for (index = 0; index + 1 < history.length; index += 2) {
-        if (historyStore.appendTurn(skillKey, history[index].content, history[index + 1].content) !== true) {
+        if (historyStore.appendTurn(skillKey, history[index].content, history[index + 1].content, history[index + 1].sources) !== true) {
           return false;
         }
       }
@@ -155,14 +159,14 @@
       return true;
     }
 
-    function recordAssistantReply(reply) {
+    function recordAssistantReply(reply, sources) {
       var userMessage = pendingUserMessage;
       var skillKey = pendingSkill;
 
       if (!userMessage || !historyStore || typeof historyStore.appendTurn !== 'function') {
         return false;
       }
-      if (historyStore.appendTurn(skillKey, userMessage, reply) !== true) {
+      if (historyStore.appendTurn(skillKey, userMessage, reply, sources) !== true) {
         return false;
       }
 
@@ -189,12 +193,14 @@
 
         return {
           skill_key: skillKey,
-          history: history.slice(-MAX_HISTORY_MESSAGES)
+          history: history.slice(-MAX_HISTORY_MESSAGES).map(function (message) {
+            return { role: message.role, content: message.content };
+          })
         };
       },
-      recordAssistantCompletion: function (reply) {
+      recordAssistantCompletion: function (reply, sources) {
         reply = normalizeText(reply) || '暂时无法完成，请重试。';
-        return recordAssistantReply(reply);
+        return recordAssistantReply(reply, sources);
       },
       recordAssistantStop: function (partialReply, stoppedLabel) {
         var label = normalizeText(stoppedLabel) || '已停止生成';

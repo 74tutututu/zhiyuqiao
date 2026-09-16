@@ -377,7 +377,9 @@ class VectorRetriever:
                 if len(text) > 300:
                     text = text[:300] + "..."
 
-                line = f"- {text} (相关度: {score:.2%})\n"
+                source = str(metadata.get("source", "")).strip()
+                source_note = f"（来源: {source}）" if source else ""
+                line = f"- {text}{source_note} (相关度: {score:.2%})\n"
 
                 if current_length + len(line) <= max_chars:
                     context_lines.append(line)

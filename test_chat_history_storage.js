@@ -164,4 +164,19 @@ test('clears only the selected tool history', () => {
   assert.deepStrictEqual(store.getHistory('tool-b'), [message('user', 'question B'), message('assistant', 'answer B')]);
 });
 
+test('retains bounded safe source cards on reload without sharing mutable objects', () => {
+  const storage = createMemoryStorage();
+  const options = { storage, storageKey: 'history', skillKeys: ['tool-a'] };
+  const store = createHistoryStore(options);
+  const sources = [{ title: 'The Bund', source_url: 'https://example.com/bund', dynamic: true },
+    { title: 'Bad link', source_url: 'javascript:alert(1)' }];
+  store.appendTurn('tool-a', 'question', 'answer', sources);
+  sources[0].title = 'mutated';
+  const restored = createHistoryStore(options).getHistory('tool-a');
+  assert.strictEqual(restored[1].sources[0].title, 'The Bund');
+  assert.strictEqual(restored[1].sources[1].source_url, undefined);
+  restored[1].sources[0].title = 'mutated again';
+  assert.strictEqual(store.getHistory('tool-a')[1].sources[0].title, 'The Bund');
+});
+
 console.log('All chat history storage tests passed.');

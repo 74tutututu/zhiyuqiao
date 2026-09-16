@@ -22,7 +22,20 @@
   }
 
   function copyMessage(message) {
-    return { role: message.role, content: message.content.trim() };
+    var result = { role: message.role, content: message.content.trim() };
+    if (message.role === 'assistant' && Array.isArray(message.sources)) {
+      result.sources = message.sources.slice(0, 8).filter(function (source) {
+        return source && typeof source === 'object';
+      }).map(function (source) {
+        var safe = { dynamic: source.dynamic === true };
+        ['source_url', 'source_org', 'published_date', 'topic', 'title', 'source'].forEach(function (key) {
+          if (typeof source[key] === 'string') safe[key] = source[key].slice(0, 2000);
+        });
+        if (safe.source_url && !/^https?:\/\//i.test(safe.source_url)) delete safe.source_url;
+        return safe;
+      });
+    }
+    return result;
   }
 
   function normalizeHistory(messages) {
@@ -105,9 +118,10 @@
         }
         return histories[skillKey].map(copyMessage);
       },
-      appendTurn: function (skillKey, userText, assistantText) {
+      appendTurn: function (skillKey, userText, assistantText, sources) {
         var userMessage = { role: 'user', content: userText };
         var assistantMessage = { role: 'assistant', content: assistantText };
+        if (Array.isArray(sources)) assistantMessage.sources = sources;
 
         if (!allowedKeys[skillKey] || !isValidMessage(userMessage, 'user') || !isValidMessage(assistantMessage, 'assistant')) {
           return false;

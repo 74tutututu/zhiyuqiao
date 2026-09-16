@@ -31,11 +31,9 @@
                 <p class="kicker kicker-light">{{ t('teacher.hero.kicker') }}</p>
                 <h1>{{ t('teacher.hero.title', name=user.display_name) }}</h1>
                 <p>{{ t('teacher.hero.body') }}</p>
-                {# data-prompt stays Chinese: it is sent to the model, whose reply language
-                   follows the account's own teaching-language setting, not the UI locale. #}
                 <div class="hero-actions">
-                    <button class="light-btn" type="button" data-skill-target="haipai_lesson_lab" data-topic="{{ t('teacher.topic.bund.title') }}" data-prompt="为HSK2学习者设计一节30分钟的外滩与陆家嘴对比课，包含文化事实核验、语言支架和形成性评价。">{{ t('teacher.hero.cta_lesson') }}</button>
-                    <button class="glass-btn" type="button" data-skill-target="bridge_lesson_design" data-topic="{{ t('teacher.topic.yangpu.title') }}" data-prompt="把杨浦滨江工业遗产设计成一项可在现场完成的小组中文任务。">{{ t('teacher.hero.cta_task') }}</button>
+                    <button class="light-btn" type="button" data-skill-target="haipai_lesson_lab" data-topic="{{ t('teacher.topic.bund.title') }}" data-prompt="{{ t('teacher.prompt.lesson') }}">{{ t('teacher.hero.cta_lesson') }}</button>
+                    <button class="glass-btn" type="button" data-skill-target="bridge_lesson_design" data-topic="{{ t('teacher.topic.yangpu.title') }}" data-prompt="{{ t('teacher.prompt.task') }}">{{ t('teacher.hero.cta_task') }}</button>
                 </div>
             </div>
             <div class="hero-metrics">
@@ -54,7 +52,7 @@
                     ('05','architecture','把建筑可阅读设计成中级中文项目。'),
                     ('06','yangpu','把杨浦滨江工业遗产转化为HSK3—4口语任务。')
                 ] %}
-                {% for no, slug, prompt in teacher_topics %}<button class="culture-card" type="button" data-skill-target="haipai_lesson_lab" data-topic="{{ t('teacher.topic.' ~ slug ~ '.title') }}" data-prompt="{{ prompt }}"><span>{{ no }}</span><b>{{ t('teacher.topic.' ~ slug ~ '.title') }}</b><small>{{ t('teacher.topic.' ~ slug ~ '.tag') }}</small><i>↗</i></button>{% endfor %}
+                {% for no, slug, prompt in teacher_topics %}<button class="culture-card" type="button" data-skill-target="haipai_lesson_lab" data-topic="{{ t('teacher.topic.' ~ slug ~ '.title') }}" data-prompt="{{ t('teacher.prompt.' ~ slug) }}"><span>{{ no }}</span><b>{{ t('teacher.topic.' ~ slug ~ '.title') }}</b><small>{{ t('teacher.topic.' ~ slug ~ '.tag') }}</small><i>↗</i></button>{% endfor %}
             </div>
         </section>
 
@@ -65,6 +63,7 @@
             </header>
             <div id="starter-prompts" class="starter-prompts" aria-label="{{ t('common.starter_aria') }}"></div>
             <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
+            {% include "_response_language.html" %}
             <div class="composer-card">
                 <label class="sr-only" for="composer-input">{{ t('teacher.composer.label') }}</label><textarea id="composer-input" rows="4" maxlength="6000" placeholder="{{ t('teacher.composer.placeholder') }}"></textarea>
                 <div class="composer-footer"><span id="character-count">0 / 6000</span><div class="action-row"><button id="clear-btn" class="quiet-btn" type="button">{{ t('common.clear') }}</button><button id="send-btn" class="send-btn" type="button">{{ t('common.send') }} <span>↗</span></button></div></div>
