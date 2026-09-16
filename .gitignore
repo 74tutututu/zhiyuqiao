@@ -3,6 +3,8 @@ __pycache__/
 .env
 .codex
 .codex_work/
+.superpowers/
+.worktrees/
 .playwright-cli/
 *.pyc
 .DS_Store

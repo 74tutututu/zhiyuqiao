@@ -2,6 +2,27 @@
     const boot = window.__ZHIYUQIAO__ || {};
     const skills = boot.skills || [];
     const role = boot.role || "teacher";
+    const skillKeys = skills.map((item) => item.key).filter(Boolean);
+    const userId = typeof boot.user?.user_id === "string" ? boot.user.user_id.trim() : "";
+    let browserStorage = null;
+    if (userId) {
+        try {
+            browserStorage = window.localStorage;
+        } catch (_) {
+            browserStorage = null;
+        }
+    }
+    const historyStore = window.ZhiYuQiaoChatHistory.createHistoryStore({
+        storage: browserStorage,
+        storageKey: `zhiyuqiao:chat-history:v1:${role}:${userId}`,
+        skillKeys,
+    });
+    const assistantController = window.ZhiYuQiaoAssistantState.createAssistantStateController({
+        historyStore,
+        selectedSkill: skills[0]?.key || "teacher_advisor",
+        topic: "",
+        skillKeys,
+    });
 
     // UI strings come from core/i18n.py via the page bootstrap. The second argument is
     // the Chinese fallback, so this file still reads correctly if i18n is ever absent.
@@ -15,9 +36,8 @@
 
     const state = {
         skills,
-        selectedSkill: skills[0]?.key || "teacher_advisor",
+        selectedSkill: assistantController.snapshot().selectedSkill,
         activeTopic: t("js.topic.default", "自主探索"),
-        history: [],
         loading: false,
         abortController: null,
         taskRecords: boot.taskRecords || [],
@@ -36,6 +56,10 @@
     const clearBtn = document.getElementById("clear-btn");
     const studentTaskList = document.getElementById("student-task-list");
     const teacherArtifactList = document.getElementById("teacher-artifact-list");
+
+    function currentHistory() {
+        return assistantController.snapshot().history;
+    }
 
     function escapeHtml(text) {
         return String(text)
@@ -106,7 +130,7 @@
     }
 
     function renderEmptyState() {
-        if (!chatMessages || state.history.length) return;
+        if (!chatMessages || currentHistory().length) return;
         const copy = role === "student"
             ? [t("js.empty.student.title", "从一个问题开始"), t("js.empty.student.body", "你可以用中文或熟悉的语言提问，我会按你的水平解释。")]
             : [t("js.empty.teacher.title", "把教学情境说具体一点"), t("js.empty.teacher.body", "学习者水平、课堂时长、文化主题和预期产出越清楚，建议越可用。")];
@@ -282,7 +306,9 @@
     function setSkill(skillKey) {
         const skill = state.skills.find((item) => item.key === skillKey);
         if (!skill) return;
-        state.selectedSkill = skill.key;
+        const snapshot = assistantController.snapshot();
+        state.selectedSkill = snapshot.selectedSkill;
+        if (typeof snapshot.topic === "string" && snapshot.topic) state.activeTopic = snapshot.topic;
         currentSkillTitle.textContent = skill.label;
         currentSkillDescription.textContent = skill.description;
         document.querySelectorAll(".skill-item").forEach((button) => {
@@ -291,6 +317,7 @@
             button.setAttribute("aria-pressed", String(active));
         });
         renderStarterPrompts(skill);
+        renderHistory();
     }
 
     function updateCharacterCount() {
@@ -320,9 +347,23 @@
         return bubble;
     }
 
+    function renderHistory() {
+        if (!chatMessages) return;
+        const history = currentHistory();
+        chatMessages.innerHTML = "";
+        if (!history.length) {
+            renderEmptyState();
+            return;
+        }
+        history.forEach((message) => appendMessage(message.role, message.content));
+    }
+
     async function sendMessage() {
         const text = composerInput.value.trim();
         if (!text || state.loading) return;
+        if (!assistantController.recordUserMessage(text)) return;
+        const requestPayload = assistantController.buildRequestPayload();
+        const requestSkill = requestPayload.skill_key;
         state.loading = true;
         state.abortController = new AbortController();
         composerInput.value = "";
@@ -331,7 +372,6 @@
         sendBtn.setAttribute("aria-label", t("js.stop_aria", "停止生成回答"));
         chatMessages.setAttribute("aria-busy", "true");
         appendMessage("user", text);
-        state.history.push({ role: "user", content: text });
         const loadingBubble = appendMessage("assistant", "", { loading: true });
         let finalReply = "";
         let finalSources = [];
@@ -340,7 +380,7 @@
             const response = await fetch("/api/message/stream", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "X-CSRF-Token": boot.csrfToken || "" },
-                body: JSON.stringify({ skill_key: state.selectedSkill, text, history: state.history }),
+                body: JSON.stringify({ skill_key: requestSkill, text, history: requestPayload.history }),
                 signal: state.abortController.signal,
             });
             if (!response.ok) {
@@ -369,21 +409,33 @@
                 chatMessages.scrollTop = chatMessages.scrollHeight;
                 if (done) break;
             }
-            appendSources(loadingBubble, finalSources);
-            appendResponseActions(loadingBubble, text, finalReply);
+            const completionFallback = "暂时无法完成，请重试。";
+            finalReply = finalReply.trim() || completionFallback;
+            assistantController.recordAssistantCompletion(finalReply);
+            const savedHistory = currentHistory();
+            const savedMessage = savedHistory[savedHistory.length - 1];
+            const savedReply = savedMessage?.role === "assistant" ? savedMessage.content : completionFallback;
+            loadingBubble.innerHTML = renderMarkdownLite(savedReply);
+            if (savedReply !== completionFallback) appendSources(loadingBubble, finalSources);
+            appendResponseActions(loadingBubble, text, savedReply);
             delete loadingBubble.dataset.loading;
             loadingBubble.removeAttribute("role");
-            state.history.push({ role: "assistant", content: finalReply });
         } catch (error) {
             if (error.name === "AbortError") {
-                const stopped = finalReply
-                    ? `${finalReply}\n\n---\n${t("js.stopped_suffix", "已停止生成。")}`
+                const stoppedLabel = finalReply
+                    ? t("js.stopped_suffix", "已停止生成。")
                     : t("js.stopped", "已停止生成，你可以调整问题后重试。");
+                const stopped = finalReply
+                    ? `${finalReply}\n\n---\n${stoppedLabel}`
+                    : stoppedLabel;
+                assistantController.recordAssistantStop(finalReply, stoppedLabel);
                 loadingBubble.innerHTML = renderMarkdownLite(stopped);
                 if (finalReply) appendResponseActions(loadingBubble, text, finalReply);
             } else {
-                const reason = escapeHtml(error.message || t("js.unavailable", "系统不可用"));
-                loadingBubble.innerHTML = `<p>${t("js.failed", "暂时无法完成：{message}。请稍后重试。", { message: reason })}</p>`;
+                const reason = error.message || t("js.unavailable", "系统不可用");
+                const failedReply = t("js.failed", "暂时无法完成：{message}。请稍后重试。", { message: reason });
+                assistantController.recordAssistantCompletion(failedReply);
+                loadingBubble.innerHTML = `<p>${escapeHtml(failedReply)}</p>`;
             }
             delete loadingBubble.dataset.loading;
         } finally {
@@ -398,25 +450,32 @@
     }
 
     function clearChat() {
-        state.history = [];
-        chatMessages.innerHTML = "";
-        renderEmptyState();
+        if (state.loading) return;
+        assistantController.clearCurrentHistory();
+        renderHistory();
         composerInput.focus();
     }
 
     skillList?.addEventListener("click", (event) => {
         const button = event.target.closest(".skill-item");
         if (button) {
+            if (!assistantController.selectFromSidebar(button.dataset.skillKey, {
+                loading: state.loading,
+                topic: button.dataset.skillLabel || t("js.topic.default", "自主探索"),
+            })) return;
             setSkill(button.dataset.skillKey);
-            state.activeTopic = button.dataset.skillLabel || t("js.topic.default", "自主探索");
         }
     });
     document.addEventListener("click", (event) => {
         const trigger = event.target.closest("[data-skill-target]");
         if (!trigger) return;
+        if (!assistantController.selectFromShortcut(trigger.dataset.skillTarget, {
+            loading: state.loading,
+            topic: trigger.dataset.topic || trigger.textContent.trim() || t("js.topic.default", "自主探索"),
+            prompt: trigger.dataset.prompt || "",
+        })) return;
         setSkill(trigger.dataset.skillTarget);
-        state.activeTopic = trigger.dataset.topic || trigger.textContent.trim() || t("js.topic.default", "自主探索");
-        composerInput.value = trigger.dataset.prompt || "";
+        composerInput.value = assistantController.snapshot().inputPrefill;
         updateCharacterCount();
         document.querySelector(".assistant-workbench")?.scrollIntoView({ behavior: "smooth", block: "start" });
         window.setTimeout(() => composerInput.focus(), 350);

@@ -73,5 +73,7 @@
 </main>
 
 <script>window.__ZHIYUQIAO__ = { skills: {{ skills | tojson }}, user: {{ user | tojson }}, role: "student", csrfToken: {{ csrf_token | tojson }}, taskRecords: {{ learning_tasks | tojson }}, progress: {{ learning_progress | tojson }}, i18n: {{ ui_strings | tojson }}, locale: {{ js_locale | tojson }} };</script>
+<script src="{{ url_for('static', path='/chat_history.js') }}"></script>
+<script src="{{ url_for('static', path='/assistant_state.js') }}"></script>
 <script src="{{ url_for('static', path='/assistant.js') }}"></script>
 {% endblock %}
