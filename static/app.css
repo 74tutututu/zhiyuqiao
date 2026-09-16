@@ -342,7 +342,7 @@ body[data-theme="academy_blue"] .message.assistant .message-bubble { background:
 /* Student sidebar */
 .student-sidebar { background: #e4ece9; }
 .student-profile-card { display: flex; align-items: center; gap: 12px; margin: 0 4px 26px; padding: 13px; border: 1px solid rgba(57,122,120,.25); border-radius: 15px; background: rgba(255,255,255,.55); }
-.avatar-ring { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; background: var(--navy); color: #fff; font-family: var(--serif); font-weight: 800; }.student-profile-card div { min-width: 0; }.student-profile-card p { margin: 0 0 4px; font-weight: 800; }.student-profile-card span:last-child { display: block; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.avatar-ring { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; padding-bottom: 2px; border-radius: 50%; background: var(--navy); color: #fff; font-family: var(--serif); font-weight: 800; line-height: 1; }.student-profile-card div { min-width: 0; }.student-profile-card p { margin: 0 0 4px; font-weight: 800; }.student-profile-card span:last-child { display: block; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Settings */
 .settings-layout { width: min(1180px, calc(100% - 40px)); margin: 56px auto 90px; display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 42px; }
