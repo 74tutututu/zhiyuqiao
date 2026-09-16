@@ -102,7 +102,10 @@
         }
         return histories[skillKey].map(copyMessage);
       },
-      appendTurn: function (skillKey, userMessage, assistantMessage) {
+      appendTurn: function (skillKey, userText, assistantText) {
+        var userMessage = { role: 'user', content: userText };
+        var assistantMessage = { role: 'assistant', content: assistantText };
+
         if (!allowedKeys[skillKey] || !isValidMessage(userMessage, 'user') || !isValidMessage(assistantMessage, 'assistant')) {
           return false;
         }

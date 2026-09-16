@@ -25,8 +25,8 @@ function message(role, content) {
 function append(store, toolKey, label) {
   return store.appendTurn(
     toolKey,
-    message('user', 'question ' + label),
-    message('assistant', 'answer ' + label)
+    'question ' + label,
+    'answer ' + label
   );
 }
 
@@ -84,7 +84,7 @@ test('ignores invalid JSON, unknown tools, and invalid messages', () => {
 
   assert.deepStrictEqual(store.getHistory('tool-a'), [message('user', 'valid'), message('assistant', 'reply')]);
   assert.deepStrictEqual(store.getHistory('unknown'), []);
-  assert.strictEqual(store.appendTurn('tool-a', message('user', 'x'), message('assistant', ' '.repeat(12001))), false);
+  assert.strictEqual(store.appendTurn('tool-a', 'x', ' '.repeat(12001)), false);
   assert.deepStrictEqual(store.getHistory('tool-a'), [message('user', 'valid'), message('assistant', 'reply')]);
 });
 
