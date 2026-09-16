@@ -170,7 +170,7 @@ def generate_response(
             messages=messages,
             temperature=0.3,
         )
-        return response.choices[0].message.content + REVIEW_NOTICE
+        return response.choices[0].message.content
     except Exception:
         logger.exception("AI advisor request failed")
         return "⚠️ 顾问系统暂时无法响应，请稍后重试。"
@@ -224,8 +224,7 @@ def generate_response_stream(
             if chunk.choices and chunk.choices[0].delta.content:
                 accumulated += chunk.choices[0].delta.content
                 yield accumulated
-        # 流结束后追加审核提示
-        yield accumulated + REVIEW_NOTICE
+        yield accumulated
     except Exception:
         logger.exception("Streaming AI advisor request failed")
         yield "⚠️ 顾问系统暂时无法响应，请稍后重试。"

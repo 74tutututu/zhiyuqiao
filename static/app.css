@@ -257,6 +257,7 @@ body[data-theme="academy_blue"] .message.assistant .message-bubble { background:
 .composer-card textarea { width: 100%; min-height: 90px; resize: vertical; padding: 4px; border: 0; outline: 0; background: transparent; color: var(--ink); line-height: 1.7; }
 .composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding-top: 10px; border-top: 1px solid var(--line); }
 .composer-footer > span { color: var(--muted); font: 11px "Times New Roman", serif; }.action-row { display: flex; gap: 8px; align-items: center; }
+.assistant-review-note { margin: 9px 4px 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
 .send-btn { min-width: 96px; background: var(--accent); color: #fff; }.send-btn:disabled { opacity: .55; cursor: wait; }
 
 /* Rendered assistant content */

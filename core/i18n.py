@@ -227,6 +227,10 @@ CATALOG: dict[str, dict[str, str]] = {
         "zh": "可以用中文或你设置的讲解语言提问。例如：“侬好”是什么意思？",
         "en": "Ask in Chinese or your chosen explanation language. For example: what does “nong hao” mean?",
     },
+    "assistant.review_notice": {
+        "zh": "AI 回答仅供学习与备课参考；涉及事实、政策或教学决策时，请结合实际情况核验。",
+        "en": "AI responses are for learning and lesson preparation. Verify facts, policy and teaching decisions before use.",
+    },
     "student.record.kicker": {"zh": "MY LEARNING RECORD", "en": "MY LEARNING RECORD"},
     "student.record.title": {"zh": "我的学习记录", "en": "My learning record"},
     "student.record.hint": {
