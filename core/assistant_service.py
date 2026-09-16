@@ -63,7 +63,13 @@ ASSISTANT_SKILLS = (
         description="生成目标、流程、活动、材料与评价一致的课堂方案。",
         icon="案",
         roles=("teacher",),
+        mode="advisor",
         runtime_key="bridge_lesson_design",
+        prompt_prefix=(
+            "你正在使用教学设计模块。围绕教学目标、课堂流程、学习活动、材料和评价提供专业支持。"
+            "用户只是问候、确认概念或追问细节时，先正常对话；仅在用户明确要求设计教案或活动时，"
+            "再给出目标—流程—活动—评价等结构化方案。"
+        ),
         starter_prompts=(
             "设计一节45分钟的上海地铁公共文明主题课",
             "把建筑可阅读任务改成小组项目",
@@ -75,7 +81,13 @@ ASSISTANT_SKILLS = (
         description="翻译教学或学习文本，并补充拼音、词汇和语境提示。",
         icon="译",
         roles=("teacher", "student"),
+        mode="advisor",
         runtime_key="bridge_translate",
+        prompt_prefix=(
+            "你正在使用跨语种解释模块。可以自然对话，并在用户明确要求翻译或跨语种解释时，"
+            "给出准确译文、必要的拼音、关键词和语境说明。不要把普通问候擅自当作待翻译文本；"
+            "目标语言不明确且确实影响结果时，再用一句话确认。"
+        ),
         starter_prompts=(
             "用英语解释‘海纳百川’，并给出两个中文例句",
             "把这段上海城市介绍改写成适合初学者的双语文本",
@@ -87,7 +99,12 @@ ASSISTANT_SKILLS = (
         description="批改中文句子或短文，解释偏误并给出自然表达。",
         icon="改",
         roles=("teacher", "student"),
+        mode="advisor",
         runtime_key="bridge_correct",
+        prompt_prefix=(
+            "你正在使用中文表达反馈模块。可以自然对话，并在用户明确提交句子或短文要求修改时，"
+            "依次给出自然表达、关键问题和简短练习建议。普通问题和问候不要套用批改模板。"
+        ),
         starter_prompts=(
             "请帮我修改：上海的建筑让我感觉历史和现代一起。",
             "批改这段中文，并告诉我最需要练习的三个问题",
@@ -99,7 +116,13 @@ ASSISTANT_SKILLS = (
         description="制定阶段计划、能力重点、资源安排和模拟练习策略。",
         icon="考",
         roles=("teacher", "student"),
+        mode="advisor",
         runtime_key="bridge_hsk_coaching",
+        prompt_prefix=(
+            "你正在使用 HSK 学习计划模块。围绕考试、学习安排、能力提升和练习反馈与用户持续对话。"
+            "只有用户明确要求制定或调整计划时，才输出分阶段计划；问候、概念问题、执行反馈和追问"
+            "都应先直接回应，不能自动重复整套备考模板。"
+        ),
         starter_prompts=(
             "为我制定四周HSK3复习计划",
             "我听力较弱，如何安排每天30分钟练习？",
@@ -111,7 +134,12 @@ ASSISTANT_SKILLS = (
         description="按课堂或作业场景推荐工具，并给出可落地的使用步骤。",
         icon="具",
         roles=("teacher",),
+        mode="advisor",
         runtime_key="bridge_tool_recommendation",
+        prompt_prefix=(
+            "你正在使用数字教学工具模块。先理解用户的具体问题并自然回应；只有明确提出选型或实施需求时，"
+            "才比较合适的工具、适用场景、限制和落地步骤，不要对每条消息重复推荐清单。"
+        ),
         starter_prompts=(
             "推荐适合国际学生城市观察任务的协作工具",
             "如何低成本收集课堂即时反馈？",
@@ -123,7 +151,13 @@ ASSISTANT_SKILLS = (
         description="解释国际中文教育标准、数字教育政策和教学合规边界。",
         icon="规",
         roles=("teacher",),
+        mode="advisor",
         runtime_key="bridge_policy_interpretation",
+        prompt_prefix=(
+            "你正在使用标准与政策模块。先直接回答用户当前问题，区分原文事实、解释和建议；"
+            "只有明确要求系统解读时才展开成结构化分析。对时效性规定说明核验日期和官方核验方向，"
+            "普通问候和追问不要套用政策模板。"
+        ),
         starter_prompts=(
             "三等九级标准如何用于海派文化任务分级？",
             "AI生成教学材料需要注意哪些审核边界？",
@@ -271,25 +305,19 @@ def run_assistant_turn(
     if skill is None or profile.account_role not in skill.roles:
         raise ValueError("当前账号不能使用该功能，请刷新页面后重试。")
 
-    role_context = (
-        f"学习者当前水平：{profile.student_level_label}；学习目标：{profile.learning_goal_label}。"
-        if profile.is_student
-        else f"教师画像：{profile.teacher_role_label}；教学语种：{profile.teaching_languages_display}。"
-    )
-    enriched_text = "\n\n".join(part for part in (skill.prompt_prefix, role_context, user_text) if part)
-
     if skill.mode == "advisor":
         return generate_response(
-            enriched_text,
+            user_text,
             history=_history_to_tuples(history),
             hsk_level=profile.student_level_label if profile.is_student else "自动判断",
             account_id=profile.account_id,
+            system_extension=skill.prompt_prefix,
         )
 
     runtime_key = skill.runtime_key or resolved_skill_key
     payload = execute_skill(
         runtime_key,
-        enriched_text,
+        user_text,
         instruction_language=profile.instruction_language,
         instruction_languages=profile.teaching_languages_display,
         teacher_level=profile.teacher_level if profile.is_teacher else "learner",
@@ -319,26 +347,20 @@ def run_assistant_turn_stream(
     if skill is None or profile.account_role not in skill.roles:
         raise ValueError("当前账号不能使用该功能，请刷新页面后重试。")
 
-    role_context = (
-        f"学习者当前水平：{profile.student_level_label}；学习目标：{profile.learning_goal_label}。"
-        if profile.is_student
-        else f"教师画像：{profile.teacher_role_label}；教学语种：{profile.teaching_languages_display}。"
-    )
-    enriched_text = "\n\n".join(part for part in (skill.prompt_prefix, role_context, user_text) if part)
-
     if skill.mode == "advisor":
         yield from generate_response_stream(
-            enriched_text,
+            user_text,
             history=_history_to_tuples(history),
             hsk_level=profile.student_level_label if profile.is_student else "自动判断",
             account_id=profile.account_id,
+            system_extension=skill.prompt_prefix,
         )
         return
 
     runtime_key = skill.runtime_key or resolved_skill_key
     yield from execute_skill_stream(
         runtime_key,
-        enriched_text,
+        user_text,
         instruction_language=profile.instruction_language,
         instruction_languages=profile.teaching_languages_display,
         teacher_level=profile.teacher_level if profile.is_teacher else "learner",
